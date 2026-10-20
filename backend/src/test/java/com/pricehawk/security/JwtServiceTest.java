@@ -36,5 +36,6 @@ class JwtServiceTest {
         assertThat(expiration).isAfter(new Date());
         assertThat(jwtService.isTokenValid(token, "user@example.com")).isTrue();
         assertThat(jwtService.isTokenValid(token, "wrong@example.com")).isFalse();
+        assertThat(jwtService.isTokenValid("invalid.token.string", "user@example.com")).isFalse();
     }
 }

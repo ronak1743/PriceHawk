@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Optional;
 
@@ -33,6 +34,9 @@ class AuthControllerTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private com.pricehawk.security.JwtService jwtService;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -172,14 +176,22 @@ class AuthControllerTest {
                 .andExpect(status().isCreated());
 
         com.pricehawk.dto.LoginRequest login = new com.pricehawk.dto.LoginRequest("john@example.com", "securePassword123");
-        mockMvc.perform(post("/auth/login")
+        MvcResult result = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(login)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isString())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.email").value("john@example.com"))
-                .andExpect(jsonPath("$.username").value("john"));
+                .andExpect(jsonPath("$.username").value("john"))
+                .andReturn();
+
+        com.pricehawk.dto.LoginResponse response = objectMapper.readValue(
+                result.getResponse().getContentAsString(), com.pricehawk.dto.LoginResponse.class);
+
+        assertThat(jwtService.extractEmail(response.getToken())).isEqualTo("john@example.com");
+        assertThat(jwtService.extractUserId(response.getToken())).isNotNull();
+        assertThat(jwtService.extractExpiration(response.getToken())).isAfter(new java.util.Date());
     }
 
     @Test
