@@ -1,0 +1,251 @@
+package com.pricehawk.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pricehawk.dto.RegisterRequest;
+import com.pricehawk.dto.TrackProductRequest;
+import com.pricehawk.model.User;
+import com.pricehawk.repository.ItemSourceRepository;
+import com.pricehawk.repository.TrackedItemRepository;
+import com.pricehawk.repository.UserRepository;
+import com.pricehawk.security.JwtService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import java.math.BigDecimal;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class ProductControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private TrackedItemRepository trackedItemRepository;
+
+    @Autowired
+    private ItemSourceRepository itemSourceRepository;
+
+    @Autowired
+    private JwtService jwtService;
+
+    private User user1;
+    private User user2;
+    private String token1;
+    private String token2;
+
+    @BeforeEach
+    void setUp() {
+        itemSourceRepository.deleteAll();
+        trackedItemRepository.deleteAll();
+        userRepository.deleteAll();
+
+        user1 = userRepository.save(new User("userone", "user1@example.com", "$2a$10$dummyHash"));
+        user2 = userRepository.save(new User("usertwo", "user2@example.com", "$2a$10$dummyHash"));
+
+        token1 = jwtService.generateToken(user1.getId(), user1.getEmail());
+        token2 = jwtService.generateToken(user2.getId(), user2.getEmail());
+    }
+
+    @Test
+    @DisplayName("POST /products/track without token returns 401 Unauthorized")
+    void trackProduct_withoutToken_returns401() throws Exception {
+        TrackProductRequest request = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "iPhone 12",
+                new BigDecimal("49999.00"),
+                null,
+                "INR",
+                null
+        );
+
+        mockMvc.perform(post("/products/track")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /products/track with valid token returns 201 Created and persists item")
+    void trackProduct_withValidToken_returns201AndPersists() throws Exception {
+        TrackProductRequest request = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "iPhone 12",
+                new BigDecimal("49999.00"),
+                new BigDecimal("45000.00"),
+                "INR",
+                "https://images.example.com/iphone.jpg"
+        );
+
+        mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.title").value("iPhone 12"))
+                .andExpect(jsonPath("$.targetPrice").value(45000.00))
+                .andExpect(jsonPath("$.sources[0].platform").value("AMAZON"))
+                .andExpect(jsonPath("$.sources[0].currentPrice").value(49999.00))
+                .andExpect(jsonPath("$.sources[0].url").value("https://www.amazon.in/dp/B08L5WHJ2V"));
+
+        assertThat(trackedItemRepository.count()).isEqualTo(1);
+        assertThat(itemSourceRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("POST /products/track with invalid input returns 400 Bad Request")
+    void trackProduct_withBlankTitleOrNullPrice_returns400() throws Exception {
+        TrackProductRequest badRequest = new TrackProductRequest(
+                "",
+                "",
+                null,
+                null,
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(badRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /products without token returns 401 Unauthorized")
+    void getProducts_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get("/products"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("GET /products with valid token returns only items belonging to the authenticated user")
+    void getProducts_returnsOnlyUserItems() throws Exception {
+        // Track item for user 1
+        TrackProductRequest req1 = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "User 1 Product",
+                new BigDecimal("1000.00"),
+                null,
+                "INR",
+                null
+        );
+        mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req1)))
+                .andExpect(status().isCreated());
+
+        // Track item for user 2
+        TrackProductRequest req2 = new TrackProductRequest(
+                "https://www.flipkart.com/item2",
+                "User 2 Product",
+                new BigDecimal("2000.00"),
+                null,
+                "INR",
+                null
+        );
+        mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token2)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req2)))
+                .andExpect(status().isCreated());
+
+        // Fetch user 1 items
+        mockMvc.perform(get("/products")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("User 1 Product"));
+
+        // Fetch user 2 items
+        mockMvc.perform(get("/products")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token2))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("User 2 Product"));
+    }
+
+    @Test
+    @DisplayName("DELETE /products/{id} without token returns 401 Unauthorized")
+    void deleteProduct_withoutToken_returns401() throws Exception {
+        mockMvc.perform(delete("/products/123"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("DELETE /products/{id} with valid token deletes item and returns 204 No Content")
+    void deleteProduct_withValidToken_returns204() throws Exception {
+        TrackProductRequest req = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "Product to delete",
+                new BigDecimal("1000.00"),
+                null,
+                "INR",
+                null
+        );
+        MvcResult res = mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(delete("/products/" + productId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1))
+                .andExpect(status().isNoContent());
+
+        assertThat(trackedItemRepository.findById(productId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("DELETE /products/{id} when item belongs to another user returns 404 Not Found")
+    void deleteProduct_ownedByAnotherUser_returns404() throws Exception {
+        TrackProductRequest req = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "User 1 product",
+                new BigDecimal("1000.00"),
+                null,
+                "INR",
+                null
+        );
+        MvcResult res = mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+
+        // User 2 tries to delete user 1's product
+        mockMvc.perform(delete("/products/" + productId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token2))
+                .andExpect(status().isNotFound());
+
+        // Ensure item was not deleted
+        assertThat(trackedItemRepository.findById(productId)).isPresent();
+    }
+}
