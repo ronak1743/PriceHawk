@@ -1,0 +1,15 @@
+package com.pricehawk.service;
+
+import com.pricehawk.dto.TrackProductRequest;
+import com.pricehawk.dto.TrackedItemResponse;
+
+import java.util.List;
+
+public interface ProductService {
+
+    TrackedItemResponse trackProduct(Long userId, TrackProductRequest request);
+
+    List<TrackedItemResponse> getTrackedProducts(Long userId);
+
+    void deleteTrackedProduct(Long userId, Long productId);
+}
