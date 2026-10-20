@@ -35,3 +35,11 @@ dist/
 *.iml
 .vscode/
 *.swp
+
+# Secrets and Local Environment
+.env
+*.env
+.env.*
+!.env.example
+application-local.properties
+backend/src/main/resources/application-local.properties
