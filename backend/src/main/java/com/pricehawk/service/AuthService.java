@@ -38,6 +38,16 @@ public class AuthService {
     }
 
     public com.pricehawk.dto.LoginResponse login(com.pricehawk.dto.LoginRequest request) {
-        return null;
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new com.pricehawk.exception.InvalidCredentialsException("Invalid email or password"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new com.pricehawk.exception.InvalidCredentialsException("Invalid email or password");
+        }
+
+        String token = jwtService.generateToken(user.getId(), user.getEmail());
+        return new com.pricehawk.dto.LoginResponse(token, user.getId(), user.getUsername(), user.getEmail());
     }
 }

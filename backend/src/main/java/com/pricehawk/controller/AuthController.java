@@ -26,4 +26,10 @@ public class AuthController {
         UserResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<com.pricehawk.dto.LoginResponse> login(@Valid @RequestBody com.pricehawk.dto.LoginRequest request) {
+        com.pricehawk.dto.LoginResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
 }
