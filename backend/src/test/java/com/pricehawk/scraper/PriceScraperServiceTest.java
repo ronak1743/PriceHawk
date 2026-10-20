@@ -19,24 +19,23 @@ import static org.mockito.Mockito.when;
 class PriceScraperServiceTest {
 
     @Mock
-    private AmazonPriceParser amazonParser;
+    private PriceParser amazonParser;
 
     @Mock
-    private FlipkartPriceParser flipkartParser;
+    private PriceParser flipkartParser;
 
     private PriceScraperService priceScraperService;
 
     @BeforeEach
     void setUp() {
-        when(amazonParser.supports(Platform.AMAZON)).thenReturn(true);
-        when(flipkartParser.supports(Platform.FLIPKART)).thenReturn(true);
-
         priceScraperService = new DefaultPriceScraperService(List.of(amazonParser, flipkartParser));
     }
 
     @Test
     @DisplayName("parseHtml routes Amazon platform to AmazonPriceParser")
     void parseHtml_routesToAmazonParser() {
+        when(amazonParser.supports(Platform.AMAZON)).thenReturn(true);
+
         String html = "<html></html>";
         String url = "https://www.amazon.in/dp/B0000000";
         ScrapedProduct mockProduct = new ScrapedProduct(
@@ -53,6 +52,9 @@ class PriceScraperServiceTest {
     @Test
     @DisplayName("parseHtml routes Flipkart platform to FlipkartPriceParser")
     void parseHtml_routesToFlipkartParser() {
+        when(amazonParser.supports(Platform.FLIPKART)).thenReturn(false);
+        when(flipkartParser.supports(Platform.FLIPKART)).thenReturn(true);
+
         String html = "<html></html>";
         String url = "https://www.flipkart.com/item";
         ScrapedProduct mockProduct = new ScrapedProduct(
