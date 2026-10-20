@@ -17,9 +17,12 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final com.pricehawk.service.PriceTrackingService priceTrackingService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService,
+                             com.pricehawk.service.PriceTrackingService priceTrackingService) {
         this.productService = productService;
+        this.priceTrackingService = priceTrackingService;
     }
 
     @PostMapping("/track")
@@ -35,6 +38,14 @@ public class ProductController {
             @AuthenticationPrincipal CustomUserPrincipal principal) {
         List<TrackedItemResponse> response = productService.getTrackedProducts(principal.getId());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<com.pricehawk.dto.PriceHistoryResponse>> getProductPriceHistory(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable Long id) {
+        List<com.pricehawk.dto.PriceHistoryResponse> history = priceTrackingService.getPriceHistory(principal.getId(), id);
+        return ResponseEntity.ok(history);
     }
 
     @DeleteMapping("/{id}")
