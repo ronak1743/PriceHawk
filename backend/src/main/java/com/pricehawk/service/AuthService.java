@@ -14,10 +14,12 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.pricehawk.security.JwtService jwtService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, com.pricehawk.security.JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -33,5 +35,9 @@ public class AuthService {
         User savedUser = userRepository.save(user);
 
         return new UserResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail());
+    }
+
+    public com.pricehawk.dto.LoginResponse login(com.pricehawk.dto.LoginRequest request) {
+        return null;
     }
 }

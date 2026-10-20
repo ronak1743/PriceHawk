@@ -28,6 +28,9 @@ class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private com.pricehawk.security.JwtService jwtService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -92,5 +95,49 @@ class AuthServiceTest {
         User captured = userCaptor.getValue();
         assertThat(captured.getUsername()).isEqualTo("alice_user");
         assertThat(captured.getEmail()).isEqualTo("alice.user@example.com");
+    }
+
+    @Test
+    @DisplayName("login - success returns LoginResponse with token and user details")
+    void login_success_returnsTokenAndDetails() {
+        com.pricehawk.dto.LoginRequest request = new com.pricehawk.dto.LoginRequest("bob@example.com", "password123");
+        User user = new User("bob", "bob@example.com", "$2a$10$encodedHash");
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "id", 1L);
+
+        when(userRepository.findByEmail("bob@example.com")).thenReturn(java.util.Optional.of(user));
+        when(passwordEncoder.matches("password123", "$2a$10$encodedHash")).thenReturn(true);
+        when(jwtService.generateToken(1L, "bob@example.com")).thenReturn("mock.jwt.token");
+
+        com.pricehawk.dto.LoginResponse response = authService.login(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getToken()).isEqualTo("mock.jwt.token");
+        assertThat(response.getTokenType()).isEqualTo("Bearer");
+        assertThat(response.getUsername()).isEqualTo("bob");
+        assertThat(response.getEmail()).isEqualTo("bob@example.com");
+    }
+
+    @Test
+    @DisplayName("login - unknown email throws InvalidCredentialsException")
+    void login_unknownEmail_throwsInvalidCredentialsException() {
+        com.pricehawk.dto.LoginRequest request = new com.pricehawk.dto.LoginRequest("unknown@example.com", "password123");
+
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(java.util.Optional.empty());
+
+        assertThrows(com.pricehawk.exception.InvalidCredentialsException.class,
+                () -> authService.login(request));
+    }
+
+    @Test
+    @DisplayName("login - wrong password throws InvalidCredentialsException")
+    void login_wrongPassword_throwsInvalidCredentialsException() {
+        com.pricehawk.dto.LoginRequest request = new com.pricehawk.dto.LoginRequest("bob@example.com", "wrongpass");
+        User user = new User("bob", "bob@example.com", "$2a$10$encodedHash");
+
+        when(userRepository.findByEmail("bob@example.com")).thenReturn(java.util.Optional.of(user));
+        when(passwordEncoder.matches("wrongpass", "$2a$10$encodedHash")).thenReturn(false);
+
+        assertThrows(com.pricehawk.exception.InvalidCredentialsException.class,
+                () -> authService.login(request));
     }
 }

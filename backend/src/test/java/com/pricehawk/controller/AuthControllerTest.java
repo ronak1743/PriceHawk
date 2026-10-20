@@ -161,4 +161,60 @@ class AuthControllerTest {
         assertThat(user.getPassword()).startsWith("$2a$");
         assertThat(passwordEncoder.matches(rawPassword, user.getPassword())).isTrue();
     }
+
+    @Test
+    @DisplayName("POST /auth/login - valid credentials returns 200 OK and JWT token")
+    void login_withValidCredentials_returns200AndJwtToken() throws Exception {
+        RegisterRequest register = new RegisterRequest("john", "john@example.com", "securePassword123");
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isCreated());
+
+        com.pricehawk.dto.LoginRequest login = new com.pricehawk.dto.LoginRequest("john@example.com", "securePassword123");
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(login)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.email").value("john@example.com"))
+                .andExpect(jsonPath("$.username").value("john"));
+    }
+
+    @Test
+    @DisplayName("POST /auth/login - wrong password returns 401 Unauthorized")
+    void login_withWrongPassword_returns401Unauthorized() throws Exception {
+        RegisterRequest register = new RegisterRequest("john", "john2@example.com", "securePassword123");
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isCreated());
+
+        com.pricehawk.dto.LoginRequest login = new com.pricehawk.dto.LoginRequest("john2@example.com", "wrongPassword");
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(login)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /auth/login - unknown email returns 401 Unauthorized")
+    void login_withUnknownEmail_returns401Unauthorized() throws Exception {
+        com.pricehawk.dto.LoginRequest login = new com.pricehawk.dto.LoginRequest("nobody@example.com", "password123");
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(login)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /auth/login - invalid email format returns 400 Bad Request")
+    void login_withInvalidEmailFormat_returns400BadRequest() throws Exception {
+        com.pricehawk.dto.LoginRequest login = new com.pricehawk.dto.LoginRequest("not-an-email", "password123");
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(login)))
+                .andExpect(status().isBadRequest());
+    }
 }
