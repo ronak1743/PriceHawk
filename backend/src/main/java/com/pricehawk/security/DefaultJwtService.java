@@ -73,9 +73,12 @@ public class DefaultJwtService implements JwtService {
 
     @Override
     public boolean isTokenValid(String token, String email) {
+        if (token == null || token.isBlank() || email == null || email.isBlank()) {
+            return false;
+        }
         try {
             Claims claims = extractAllClaims(token);
-            boolean isSubjectMatching = claims.getSubject() != null && claims.getSubject().equalsIgnoreCase(email);
+            boolean isSubjectMatching = claims.getSubject() != null && claims.getSubject().equalsIgnoreCase(email.trim());
             boolean isNotExpired = claims.getExpiration() != null && claims.getExpiration().after(new Date());
             return isSubjectMatching && isNotExpired;
         } catch (Exception e) {
