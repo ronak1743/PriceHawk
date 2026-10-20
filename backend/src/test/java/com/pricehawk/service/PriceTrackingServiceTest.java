@@ -41,6 +41,9 @@ class PriceTrackingServiceTest {
     @Mock
     private PriceAlertRepository priceAlertRepository;
 
+    @Mock
+    private com.pricehawk.service.email.EmailService emailService;
+
     private PriceTrackingService priceTrackingService;
 
     private User testUser;
@@ -53,7 +56,8 @@ class PriceTrackingServiceTest {
                 trackedItemRepository,
                 itemSourceRepository,
                 priceHistoryRepository,
-                priceAlertRepository
+                priceAlertRepository,
+                emailService
         );
 
         testUser = new User("testuser", "test@example.com", "hash123");
@@ -95,6 +99,7 @@ class PriceTrackingServiceTest {
 
         // Price (68000) > targetPrice (65000) -> no alert
         verify(priceAlertRepository, never()).save(any());
+        verify(emailService, never()).sendPriceDropAlert(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -114,6 +119,15 @@ class PriceTrackingServiceTest {
         assertThat(alert.getNewPrice()).isEqualByComparingTo(droppedPrice);
         assertThat(alert.getTargetPrice()).isEqualByComparingTo(new BigDecimal("65000.00"));
         assertThat(alert.isRead()).isFalse();
+
+        // Verify email alert sent via Resend
+        verify(emailService).sendPriceDropAlert(
+                eq("test@example.com"),
+                eq("Apple iPhone 15"),
+                eq(new BigDecimal("70000.00")),
+                eq(droppedPrice),
+                eq("https://www.amazon.in/dp/B0000")
+        );
     }
 
     @Test

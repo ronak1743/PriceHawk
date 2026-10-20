@@ -26,15 +26,18 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
     private final ItemSourceRepository itemSourceRepository;
     private final PriceHistoryRepository priceHistoryRepository;
     private final PriceAlertRepository priceAlertRepository;
+    private final com.pricehawk.service.email.EmailService emailService;
 
     public DefaultPriceTrackingService(TrackedItemRepository trackedItemRepository,
                                        ItemSourceRepository itemSourceRepository,
                                        PriceHistoryRepository priceHistoryRepository,
-                                       PriceAlertRepository priceAlertRepository) {
+                                       PriceAlertRepository priceAlertRepository,
+                                       com.pricehawk.service.email.EmailService emailService) {
         this.trackedItemRepository = trackedItemRepository;
         this.itemSourceRepository = itemSourceRepository;
         this.priceHistoryRepository = priceHistoryRepository;
         this.priceAlertRepository = priceAlertRepository;
+        this.emailService = emailService;
     }
 
     @Override
@@ -58,6 +61,17 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
             if (newPrice.compareTo(item.getTargetPrice()) <= 0) {
                 PriceAlert alert = new PriceAlert(item, item.getUser(), oldPrice, newPrice, item.getTargetPrice());
                 priceAlertRepository.save(alert);
+
+                // Send email alert via Resend
+                if (item.getUser() != null && item.getUser().getEmail() != null) {
+                    emailService.sendPriceDropAlert(
+                            item.getUser().getEmail(),
+                            item.getTitle(),
+                            oldPrice,
+                            newPrice,
+                            source.getUrl()
+                    );
+                }
             }
         }
     }
