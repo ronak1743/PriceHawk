@@ -77,6 +77,23 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("POST /auth/register - duplicate email with different case returns 409 Conflict")
+    void register_withDuplicateEmailCaseInsensitive_returns409Conflict() throws Exception {
+        RegisterRequest user1 = new RegisterRequest("user1", "casesensitive@example.com", "password123");
+        RegisterRequest user2 = new RegisterRequest("user2", "CaseSensitive@EXAMPLE.COM", "password123");
+
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(user1)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(user2)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     @DisplayName("POST /auth/register - duplicate username with different email is allowed (returns 201 Created)")
     void register_withDuplicateUsernameDifferentEmail_isAllowed() throws Exception {
         RegisterRequest user1 = new RegisterRequest("sameusername", "user1@example.com", "password123");
