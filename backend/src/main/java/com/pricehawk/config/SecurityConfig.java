@@ -58,7 +58,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("chrome-extension://*", "http://localhost:*", "http://127.0.0.1:*"));
+        configuration.setAllowedOriginPatterns(List.of(
+                "chrome-extension://*",
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "https://*.amazon.in",
+                "https://*.amazon.com",
+                "https://*.flipkart.com",
+                "https://*.flipkart.net"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization"));

@@ -61,7 +61,15 @@ export async function trackProduct(token, productData) {
     },
     body: JSON.stringify(productData),
   });
-  if (!response.ok) throw new Error('Failed to track product');
+  if (!response.ok) {
+    let msg = 'Failed to track product';
+    try {
+      const data = await response.json();
+      if (data.message) msg = data.message;
+      else if (data.error) msg = data.error;
+    } catch {}
+    throw new Error(msg);
+  }
   return response.json();
 }
 
@@ -149,6 +157,22 @@ export async function addProductSource(token, id, { url, autoDiscover }) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.message || 'Failed to add counterpart source');
+  }
+  return data;
+}
+
+export async function updateAlertSettings(token, id, { targetPrice, notifyOnAnyDrop }) {
+  const response = await fetch(`${API_BASE}/products/${id}/alert-settings`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ targetPrice, notifyOnAnyDrop }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to update alert settings');
   }
   return data;
 }

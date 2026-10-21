@@ -290,7 +290,7 @@ describe('App - Tracker Dashboard UI', () => {
     };
 
     globalThis.fetch = vi.fn().mockImplementation((url, opts) => {
-      if (url.includes('/products/101/target-price') && opts?.method === 'PATCH') {
+      if ((url.includes('/products/101/target-price') || url.includes('/products/101/alert-settings')) && opts?.method === 'PATCH') {
         return Promise.resolve({
           ok: true,
           status: 200,

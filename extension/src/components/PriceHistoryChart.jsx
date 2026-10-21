@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { getProductHistory, updateTargetPrice } from '../services/api';
+import { getProductHistory, updateAlertSettings } from '../services/api';
 import './PriceHistoryChart.css';
 
 export default function PriceHistoryChart({ token, product, onTargetPriceUpdated }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [targetInput, setTargetInput] = useState(product.targetPrice || '');
+  const [notifyAnyDrop, setNotifyAnyDrop] = useState(product.notifyOnAnyDrop ?? true);
   const [savingTarget, setSavingTarget] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -32,25 +33,28 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
     };
   }, [token, product.id]);
 
-  const handleSaveTarget = async (e) => {
+  const handleSaveAlertSettings = async (e) => {
     e.preventDefault();
-    const val = parseFloat(targetInput);
-    if (isNaN(val) || val < 0) {
-      setError('Please enter a valid target price');
+    let val = targetInput === '' ? null : parseFloat(targetInput);
+    if (val !== null && (isNaN(val) || val < 0)) {
+      setError('Please enter a valid target price or leave blank');
       return;
     }
 
     setSavingTarget(true);
     setError(null);
     try {
-      const updated = await updateTargetPrice(token, product.id, val);
+      const updated = await updateAlertSettings(token, product.id, {
+        targetPrice: val,
+        notifyOnAnyDrop: notifyAnyDrop,
+      });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
       if (onTargetPriceUpdated) {
         onTargetPriceUpdated(updated);
       }
     } catch (err) {
-      setError(err.message || 'Failed to update target price');
+      setError(err.message || 'Failed to update alert settings');
     } finally {
       setSavingTarget(false);
     }
@@ -234,11 +238,11 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
         )}
       </div>
 
-      {/* Target Price Configuration */}
-      <form className="target-price-form" onSubmit={handleSaveTarget}>
+      {/* Target Price & Smart Alert Configuration */}
+      <form className="target-price-form" onSubmit={handleSaveAlertSettings}>
         <div className="target-input-row">
           <label htmlFor={`target-${product.id}`} className="target-label">
-            Target Alert:
+            Target Price:
           </label>
           <div className="target-input-wrapper">
             <span className="target-currency-symbol">₹</span>
@@ -256,6 +260,27 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
             {savingTarget ? '...' : saveSuccess ? '✓ Saved' : 'Set'}
           </button>
         </div>
+
+        <div className="alert-toggle-row">
+          <label className="toggle-label" htmlFor={`anydrop-${product.id}`}>
+            <input
+              id={`anydrop-${product.id}`}
+              type="checkbox"
+              className="toggle-checkbox"
+              checked={notifyAnyDrop}
+              onChange={(e) => setNotifyAnyDrop(e.target.checked)}
+              disabled={savingTarget}
+            />
+            <span className="toggle-text">🔔 Alert on any price drop</span>
+          </label>
+        </div>
+
+        {product.lastNotifiedPrice && (
+          <div className="alert-meta-status">
+            <span>🛡️ Anti-spam active · Last notified: ₹{Number(product.lastNotifiedPrice).toLocaleString('en-IN')}</span>
+          </div>
+        )}
+
         {error && <span className="target-error-msg">{error}</span>}
       </form>
     </div>

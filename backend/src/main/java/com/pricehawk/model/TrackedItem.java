@@ -18,11 +18,20 @@ public class TrackedItem {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String title;
 
     @Column(precision = 12, scale = 2)
     private BigDecimal targetPrice;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal lastNotifiedPrice;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal previousPrice;
+
+    @Column(name = "notify_on_any_drop", columnDefinition = "boolean default true")
+    private Boolean notifyOnAnyDrop = true;
 
     @OneToMany(mappedBy = "trackedItem", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemSource> sources = new ArrayList<>();
@@ -36,6 +45,16 @@ public class TrackedItem {
         this.user = user;
         this.title = title;
         this.targetPrice = targetPrice;
+        this.notifyOnAnyDrop = true;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public TrackedItem(User user, String title, BigDecimal targetPrice, Boolean notifyOnAnyDrop) {
+        this.user = user;
+        this.title = title;
+        this.targetPrice = targetPrice;
+        this.notifyOnAnyDrop = notifyOnAnyDrop != null ? notifyOnAnyDrop : true;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -48,11 +67,17 @@ public class TrackedItem {
         if (this.updatedAt == null) {
             this.updatedAt = LocalDateTime.now();
         }
+        if (this.notifyOnAnyDrop == null) {
+            this.notifyOnAnyDrop = true;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+        if (this.notifyOnAnyDrop == null) {
+            this.notifyOnAnyDrop = true;
+        }
     }
 
     public void addSource(ItemSource source) {
@@ -90,6 +115,30 @@ public class TrackedItem {
 
     public void setTargetPrice(BigDecimal targetPrice) {
         this.targetPrice = targetPrice;
+    }
+
+    public BigDecimal getLastNotifiedPrice() {
+        return lastNotifiedPrice;
+    }
+
+    public void setLastNotifiedPrice(BigDecimal lastNotifiedPrice) {
+        this.lastNotifiedPrice = lastNotifiedPrice;
+    }
+
+    public BigDecimal getPreviousPrice() {
+        return previousPrice;
+    }
+
+    public void setPreviousPrice(BigDecimal previousPrice) {
+        this.previousPrice = previousPrice;
+    }
+
+    public Boolean getNotifyOnAnyDrop() {
+        return notifyOnAnyDrop != null ? notifyOnAnyDrop : true;
+    }
+
+    public void setNotifyOnAnyDrop(Boolean notifyOnAnyDrop) {
+        this.notifyOnAnyDrop = notifyOnAnyDrop != null ? notifyOnAnyDrop : true;
     }
 
     public List<ItemSource> getSources() {

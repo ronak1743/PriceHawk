@@ -314,7 +314,9 @@ export default function App() {
         }
 
         const title = details?.title || tab.title?.replace(/ : (Amazon|Flipkart).*$/i, '') || 'Tracked Product';
-        const currentPrice = details?.currentPrice || 1.0;
+        const currentPrice = (typeof details?.currentPrice === 'number' && !isNaN(details.currentPrice) && details.currentPrice > 0)
+          ? details.currentPrice
+          : 1.0;
         const imageUrl = details?.imageUrl || '';
 
         const item = await trackProduct(auth.token, {

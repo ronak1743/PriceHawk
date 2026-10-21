@@ -73,6 +73,15 @@ public class ProductController {
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/{id}/alert-settings")
+    public ResponseEntity<TrackedItemResponse> updateAlertSettings(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.pricehawk.dto.UpdateAlertSettingsRequest request) {
+        TrackedItemResponse response = productService.updateAlertSettings(principal.getId(), id, request);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{id}/sources")
     public ResponseEntity<TrackedItemResponse> addProductSource(
             @AuthenticationPrincipal CustomUserPrincipal principal,

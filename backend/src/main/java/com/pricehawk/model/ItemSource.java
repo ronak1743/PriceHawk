@@ -20,7 +20,7 @@ public class ItemSource {
     @Column(nullable = false)
     private Platform platform;
 
-    @Column(nullable = false, length = 2048)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String url;
 
     @Column(nullable = false, precision = 12, scale = 2)
@@ -32,7 +32,7 @@ public class ItemSource {
     @Column(nullable = false, length = 10)
     private String currency = "INR";
 
-    @Column(length = 2048)
+    @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
     @Column(nullable = false)

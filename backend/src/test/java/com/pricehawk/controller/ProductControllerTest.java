@@ -379,6 +379,43 @@ class ProductControllerTest {
     }
 
     @Test
+    @DisplayName("PATCH /products/{id}/alert-settings updates both targetPrice and notifyOnAnyDrop toggle")
+    void updateAlertSettings_withValidToken_updatesSettings() throws Exception {
+        TrackProductRequest req = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "Product alert test",
+                new BigDecimal("50000.00"),
+                null,
+                "INR",
+                null
+        );
+        MvcResult res = mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+
+        com.pricehawk.dto.UpdateAlertSettingsRequest updateReq =
+                new com.pricehawk.dto.UpdateAlertSettingsRequest(new BigDecimal("42000.00"), false);
+
+        mockMvc.perform(patch("/products/" + productId + "/alert-settings")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(productId))
+                .andExpect(jsonPath("$.targetPrice").value(42000.00))
+                .andExpect(jsonPath("$.notifyOnAnyDrop").value(false));
+
+        TrackedItem updated = trackedItemRepository.findById(productId).orElseThrow();
+        assertThat(updated.getTargetPrice()).isEqualByComparingTo(new BigDecimal("42000.00"));
+        assertThat(updated.getNotifyOnAnyDrop()).isFalse();
+    }
+
+    @Test
     @DisplayName("PATCH /products/{id}/target-price with negative price returns 400 Bad Request")
     void updateTargetPrice_negativePrice_returns400() throws Exception {
         com.pricehawk.dto.UpdateTargetPriceRequest updateReq =

@@ -128,6 +128,61 @@ class PriceTrackingServiceTest {
                 eq(droppedPrice),
                 eq("https://www.amazon.in/dp/B0000")
         );
+        assertThat(testItem.getLastNotifiedPrice()).isEqualByComparingTo(droppedPrice);
+    }
+
+    @Test
+    @DisplayName("recordPriceUpdate - prevents duplicate redundant email on consecutive cron runs when price is unchanged")
+    void recordPriceUpdate_preventsDuplicateAlertsOnConsecutiveCronRuns() {
+        BigDecimal targetPrice = new BigDecimal("65000.00");
+        BigDecimal lowPrice = new BigDecimal("64000.00");
+
+        // 1st run: drops to 64000 -> alerts
+        priceTrackingService.recordPriceUpdate(testSource, lowPrice, true);
+        verify(emailService, times(1)).sendPriceDropAlert(any(), any(), any(), any(), any());
+        verify(priceAlertRepository, times(1)).save(any());
+
+        // 2nd run (1 hour later): price is still 64000 -> NO duplicate alert or email!
+        priceTrackingService.recordPriceUpdate(testSource, lowPrice, true);
+        verify(emailService, times(1)).sendPriceDropAlert(any(), any(), any(), any(), any());
+        verify(priceAlertRepository, times(1)).save(any());
+
+        // 3rd run (2 hours later): price drops further to 62000 -> new alert triggered!
+        BigDecimal evenLowerPrice = new BigDecimal("62000.00");
+        priceTrackingService.recordPriceUpdate(testSource, evenLowerPrice, true);
+        verify(emailService, times(2)).sendPriceDropAlert(any(), any(), any(), any(), any());
+        verify(priceAlertRepository, times(2)).save(any());
+    }
+
+    @Test
+    @DisplayName("recordPriceUpdate - triggers alert on any price drop when notifyOnAnyDrop is true even without targetPrice")
+    void recordPriceUpdate_triggersOnAnyPriceDrop_whenNotifyOnAnyDropEnabled() {
+        testItem.setTargetPrice(null);
+        testItem.setNotifyOnAnyDrop(true);
+        testItem.setPreviousPrice(new BigDecimal("70000.00"));
+
+        BigDecimal droppedPrice = new BigDecimal("68500.00"); // dropped below added price 70000
+        priceTrackingService.recordPriceUpdate(testSource, droppedPrice, true);
+
+        verify(emailService, times(1)).sendPriceDropAlert(any(), any(), any(), any(), any());
+        verify(priceAlertRepository, times(1)).save(any());
+
+        // Next run with same price 68500 -> no duplicate email
+        priceTrackingService.recordPriceUpdate(testSource, droppedPrice, true);
+        verify(emailService, times(1)).sendPriceDropAlert(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("recordPriceUpdate - does not trigger alert when notifyOnAnyDrop is false and no targetPrice is set")
+    void recordPriceUpdate_doesNotAlert_whenNotifyOnAnyDropIsFalse_andNoTargetPrice() {
+        testItem.setTargetPrice(null);
+        testItem.setNotifyOnAnyDrop(false);
+
+        BigDecimal droppedPrice = new BigDecimal("68500.00");
+        priceTrackingService.recordPriceUpdate(testSource, droppedPrice, true);
+
+        verify(emailService, never()).sendPriceDropAlert(any(), any(), any(), any(), any());
+        verify(priceAlertRepository, never()).save(any());
     }
 
     @Test

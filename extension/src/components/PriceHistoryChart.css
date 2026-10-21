@@ -291,3 +291,44 @@
   font-size: 0.68rem;
   color: #f87171;
 }
+
+.alert-toggle-row {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-checkbox {
+  accent-color: #6366f1;
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
+.toggle-text {
+  font-size: 0.7rem;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.alert-meta-status {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 5px;
+  padding: 4px 8px;
+  margin-top: 2px;
+}
+
+.alert-meta-status span {
+  font-size: 0.64rem;
+  color: #93c5fd;
+  display: block;
+}

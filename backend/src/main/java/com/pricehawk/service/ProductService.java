@@ -17,5 +17,7 @@ public interface ProductService {
 
     TrackedItemResponse updateTargetPrice(Long userId, Long productId, java.math.BigDecimal targetPrice);
 
+    TrackedItemResponse updateAlertSettings(Long userId, Long productId, com.pricehawk.dto.UpdateAlertSettingsRequest request);
+
     TrackedItemResponse addProductSource(Long userId, Long productId, com.pricehawk.dto.AddProductSourceRequest request);
 }

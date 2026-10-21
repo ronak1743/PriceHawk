@@ -58,7 +58,13 @@ public class DefaultProductService implements ProductService {
 
         Platform platform = Platform.fromUrl(request.getUrl());
 
-        TrackedItem trackedItem = new TrackedItem(user, request.getTitle(), request.getTargetPrice());
+        TrackedItem trackedItem = new TrackedItem(
+                user,
+                request.getTitle(),
+                request.getTargetPrice(),
+                request.getNotifyOnAnyDrop()
+        );
+        trackedItem.setPreviousPrice(request.getCurrentPrice());
 
         ItemSource source = new ItemSource(
                 trackedItem,
@@ -139,6 +145,23 @@ public class DefaultProductService implements ProductService {
 
     @Override
     @Transactional
+    public TrackedItemResponse updateAlertSettings(Long userId, Long productId, com.pricehawk.dto.UpdateAlertSettingsRequest request) {
+        TrackedItem item = trackedItemRepository.findByIdAndUserId(productId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
+
+        if (request.getTargetPrice() != null) {
+            item.setTargetPrice(request.getTargetPrice());
+        }
+        if (request.getNotifyOnAnyDrop() != null) {
+            item.setNotifyOnAnyDrop(request.getNotifyOnAnyDrop());
+        }
+
+        TrackedItem saved = trackedItemRepository.save(item);
+        return mapToResponse(saved);
+    }
+
+    @Override
+    @Transactional
     public TrackedItemResponse addProductSource(Long userId, Long productId, com.pricehawk.dto.AddProductSourceRequest request) {
         TrackedItem item = trackedItemRepository.findByIdAndUserId(productId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
@@ -196,6 +219,9 @@ public class DefaultProductService implements ProductService {
                 item.getId(),
                 item.getTitle(),
                 item.getTargetPrice(),
+                item.getLastNotifiedPrice(),
+                item.getPreviousPrice(),
+                item.getNotifyOnAnyDrop(),
                 item.getCreatedAt(),
                 item.getUpdatedAt(),
                 sourceResponses

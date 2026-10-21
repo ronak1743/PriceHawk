@@ -80,7 +80,12 @@ import './content.css';
           });
 
           if (!res.ok) {
-            throw new Error('Failed to track product');
+            let errorMsg = 'Failed to track product';
+            try {
+              const errData = await res.json();
+              if (errData.message) errorMsg = errData.message;
+            } catch {}
+            throw new Error(errorMsg);
           }
 
           showToast('Product tracked! We will alert you on price drops.');

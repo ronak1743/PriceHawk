@@ -10,11 +10,11 @@ import java.math.BigDecimal;
 public class TrackProductRequest {
 
     @NotBlank(message = "Product URL is required")
-    @Size(max = 2048, message = "URL cannot exceed 2048 characters")
+    @Size(max = 10000, message = "URL cannot exceed 10000 characters")
     private String url;
 
     @NotBlank(message = "Product title is required")
-    @Size(max = 500, message = "Title cannot exceed 500 characters")
+    @Size(max = 5000, message = "Title cannot exceed 5000 characters")
     private String title;
 
     @NotNull(message = "Current price is required")
@@ -23,6 +23,8 @@ public class TrackProductRequest {
 
     @PositiveOrZero(message = "Target price must be zero or positive")
     private BigDecimal targetPrice;
+
+    private Boolean notifyOnAnyDrop = true;
 
     private String currency;
 
@@ -36,6 +38,18 @@ public class TrackProductRequest {
         this.title = title;
         this.currentPrice = currentPrice;
         this.targetPrice = targetPrice;
+        this.notifyOnAnyDrop = true;
+        this.currency = currency;
+        this.imageUrl = imageUrl;
+    }
+
+    public TrackProductRequest(String url, String title, BigDecimal currentPrice, BigDecimal targetPrice,
+                               Boolean notifyOnAnyDrop, String currency, String imageUrl) {
+        this.url = url;
+        this.title = title;
+        this.currentPrice = currentPrice;
+        this.targetPrice = targetPrice;
+        this.notifyOnAnyDrop = notifyOnAnyDrop != null ? notifyOnAnyDrop : true;
         this.currency = currency;
         this.imageUrl = imageUrl;
     }
@@ -70,6 +84,14 @@ public class TrackProductRequest {
 
     public void setTargetPrice(BigDecimal targetPrice) {
         this.targetPrice = targetPrice;
+    }
+
+    public Boolean getNotifyOnAnyDrop() {
+        return notifyOnAnyDrop != null ? notifyOnAnyDrop : true;
+    }
+
+    public void setNotifyOnAnyDrop(Boolean notifyOnAnyDrop) {
+        this.notifyOnAnyDrop = notifyOnAnyDrop != null ? notifyOnAnyDrop : true;
     }
 
     public String getCurrency() {

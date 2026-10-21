@@ -55,12 +55,47 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
         source.setLastCheckedAt(LocalDateTime.now());
         itemSourceRepository.save(source);
 
-        // 3. Evaluate alert condition
+        // 3. Evaluate smart alert conditions with redundant spam prevention
         TrackedItem item = source.getTrackedItem();
-        if (item != null && item.getTargetPrice() != null && newPrice != null) {
-            if (newPrice.compareTo(item.getTargetPrice()) <= 0) {
-                PriceAlert alert = new PriceAlert(item, item.getUser(), oldPrice, newPrice, item.getTargetPrice());
+        if (item != null && newPrice != null) {
+            BigDecimal targetPrice = item.getTargetPrice();
+            BigDecimal lastNotifiedPrice = item.getLastNotifiedPrice();
+            BigDecimal previousPrice = item.getPreviousPrice() != null ? item.getPreviousPrice() : oldPrice;
+            BigDecimal addedPrice = source.getOriginalPrice() != null ? source.getOriginalPrice() : oldPrice;
+            boolean notifyOnAnyDrop = Boolean.TRUE.equals(item.getNotifyOnAnyDrop());
+
+            boolean shouldAlert = false;
+
+            // Scenario 1: Target Price reached (when explicit targetPrice is configured)
+            if (targetPrice != null) {
+                if (newPrice.compareTo(targetPrice) <= 0) {
+                    // Prevent spam: only alert if not notified yet, dropped lower, or just crossed below target from above
+                    if (lastNotifiedPrice == null
+                            || newPrice.compareTo(lastNotifiedPrice) < 0
+                            || (previousPrice != null && previousPrice.compareTo(targetPrice) > 0)) {
+                        shouldAlert = true;
+                    }
+                }
+            } else if (notifyOnAnyDrop) {
+                // Scenario 2: Any price drop (when no targetPrice set, but any-drop alert enabled)
+                boolean lowerThanAdded = addedPrice != null && newPrice.compareTo(addedPrice) < 0;
+                boolean lowerThanPrevious = previousPrice != null && newPrice.compareTo(previousPrice) < 0;
+                boolean lowerThanLastNotified = lastNotifiedPrice == null || newPrice.compareTo(lastNotifiedPrice) < 0;
+
+                if (lowerThanAdded && lowerThanPrevious && lowerThanLastNotified) {
+                    shouldAlert = true;
+                }
+            }
+
+            // Track previous price for consecutive check evaluations
+            item.setPreviousPrice(newPrice);
+
+            if (shouldAlert) {
+                PriceAlert alert = new PriceAlert(item, item.getUser(), oldPrice, newPrice, targetPrice);
                 priceAlertRepository.save(alert);
+
+                // Update last notified price to avoid redundant emails on stagnant prices
+                item.setLastNotifiedPrice(newPrice);
 
                 // Send email alert via Resend
                 if (item.getUser() != null && item.getUser().getEmail() != null) {
@@ -73,6 +108,8 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
                     );
                 }
             }
+
+            trackedItemRepository.save(item);
         }
     }
 
