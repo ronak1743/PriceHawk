@@ -77,7 +77,7 @@ describe('App - Tracker Dashboard UI', () => {
     });
 
     expect(screen.getByText(/₹69,999/i)).toBeInTheDocument();
-    expect(screen.getByText(/AMAZON/i)).toBeInTheDocument();
+    expect(screen.getByText(/^AMAZON$/i)).toBeInTheDocument();
   });
 
   it('switches to alerts tab and renders price drop alerts', async () => {

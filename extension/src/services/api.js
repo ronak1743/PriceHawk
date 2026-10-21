@@ -41,3 +41,58 @@ export async function register(username, email, password) {
 
   return data;
 }
+
+export async function getProducts(token) {
+  const response = await fetch(`${API_BASE}/products`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error('Failed to fetch tracked products');
+  return response.json();
+}
+
+export async function trackProduct(token, productData) {
+  const response = await fetch(`${API_BASE}/products/track`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(productData),
+  });
+  if (!response.ok) throw new Error('Failed to track product');
+  return response.json();
+}
+
+export async function deleteProduct(token, id) {
+  const response = await fetch(`${API_BASE}/products/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error('Failed to delete product');
+  return true;
+}
+
+export async function getAlerts(token) {
+  const response = await fetch(`${API_BASE}/alerts`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error('Failed to fetch alerts');
+  return response.json();
+}
+
+export async function markAlertRead(token, id) {
+  const response = await fetch(`${API_BASE}/alerts/${id}/read`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error('Failed to mark alert as read');
+  return true;
+}

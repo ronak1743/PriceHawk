@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PriceHawk - Price Tracker",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Smart price tracking for Amazon and Flipkart with drop alerts.",
   "action": {
     "default_popup": "index.html"
@@ -13,6 +13,19 @@
   "host_permissions": [
     "http://localhost:8080/*",
     "https://*.amazon.in/*",
+    "https://*.amazon.com/*",
     "https://*.flipkart.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.amazon.in/*",
+        "https://*.amazon.com/*",
+        "https://*.flipkart.com/*"
+      ],
+      "js": ["assets/content.js"],
+      "css": ["assets/content.css"],
+      "run_at": "document_idle"
+    }
   ]
 }

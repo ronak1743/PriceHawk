@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, setAuth as saveAuth, clearAuth } from './services/storage';
-import { login, register } from './services/api';
+import { login, register, getProducts, deleteProduct, getAlerts, markAlertRead, trackProduct } from './services/api';
 import './App.css';
 
 export default function App() {
@@ -12,13 +12,37 @@ export default function App() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Dashboard states
+  const [dashboardTab, setDashboardTab] = useState('items'); // 'items' | 'alerts'
+  const [products, setProducts] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [fetchingData, setFetchingData] = useState(false);
+  const [actionSuccess, setActionSuccess] = useState(null);
+
   useEffect(() => {
     getAuth().then((stored) => {
       if (stored?.token) {
         setAuth(stored);
+        loadDashboardData(stored.token);
       }
     });
   }, []);
+
+  const loadDashboardData = async (token) => {
+    setFetchingData(true);
+    try {
+      const [fetchedProducts, fetchedAlerts] = await Promise.all([
+        getProducts(token).catch(() => []),
+        getAlerts(token).catch(() => []),
+      ]);
+      setProducts(fetchedProducts || []);
+      setAlerts(fetchedAlerts || []);
+    } catch (err) {
+      console.error('Error loading dashboard data', err);
+    } finally {
+      setFetchingData(false);
+    }
+  };
 
   const handleTabChange = (newMode) => {
     setMode(newMode);
@@ -51,7 +75,6 @@ export default function App() {
     try {
       if (mode === 'register') {
         await register(username, email, password);
-        // Seamlessly log in after successful registration
         const loginRes = await login(email, password);
         const authData = {
           token: loginRes.token,
@@ -59,6 +82,7 @@ export default function App() {
         };
         await saveAuth(authData);
         setAuth(authData);
+        loadDashboardData(authData.token);
       } else {
         const loginRes = await login(email, password);
         const authData = {
@@ -67,6 +91,7 @@ export default function App() {
         };
         await saveAuth(authData);
         setAuth(authData);
+        loadDashboardData(authData.token);
       }
     } catch (err) {
       setError(err.message || 'Authentication failed');
@@ -82,7 +107,63 @@ export default function App() {
     setEmail('');
     setPassword('');
     setError(null);
+    setProducts([]);
+    setAlerts([]);
   };
+
+  const handleDeleteProduct = async (productId) => {
+    if (!auth?.token) return;
+    try {
+      await deleteProduct(auth.token, productId);
+      setProducts((prev) => prev.filter((p) => p.id !== productId));
+      setActionSuccess('Item removed from tracking');
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to delete item');
+    }
+  };
+
+  const handleMarkAlertRead = async (alertId) => {
+    if (!auth?.token) return;
+    try {
+      await markAlertRead(auth.token, alertId);
+      setAlerts((prev) =>
+        prev.map((a) => (a.id === alertId ? { ...a, isRead: true } : a))
+      );
+    } catch (err) {
+      setError(err.message || 'Failed to mark alert as read');
+    }
+  };
+
+  const handleTrackCurrentTab = async () => {
+    if (!auth?.token) return;
+    setError(null);
+    try {
+      if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab?.url) {
+          const isAmazon = tab.url.includes('amazon.');
+          const isFlipkart = tab.url.includes('flipkart.');
+          if (!isAmazon && !isFlipkart) {
+            setError('Please open an Amazon or Flipkart product page to track.');
+            return;
+          }
+          const item = await trackProduct(auth.token, {
+            url: tab.url,
+            title: tab.title?.replace(/ : (Amazon|Flipkart).*$/i, '') || 'Tracked Product',
+            currentPrice: 1.0, // Baseline fallback if scraped by backend
+          });
+          setProducts((prev) => [item, ...prev]);
+          setActionSuccess('Product tracked successfully!');
+          setTimeout(() => setActionSuccess(null), 3000);
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to track current page');
+    }
+  };
+
+  const unreadAlertsCount = alerts.filter((a) => !a.isRead).length;
 
   return (
     <div className="popup-container">
@@ -107,43 +188,170 @@ export default function App() {
       </header>
 
       {auth?.user ? (
-        <div className="logged-in-container">
-          <div className="avatar-ring">
-            <div className="user-avatar">
-              {(auth.user.username || auth.user.email || 'U').charAt(0).toUpperCase()}
+        <div className="dashboard-container">
+          {/* Top user bar */}
+          <div className="dashboard-user-bar">
+            <div className="user-bar-left">
+              <div className="user-avatar-small">
+                {(auth.user.username || auth.user.email || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="user-bar-names">
+                <span className="user-greeting">Welcome, {auth.user.username || auth.user.email}</span>
+                <span className="user-email-badge">{auth.user.email}</span>
+              </div>
             </div>
+            <button className="logout-icon-btn" onClick={handleLogout} title="Sign Out">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Sign Out</span>
+            </button>
           </div>
 
-          <div className="user-info">
-            <h2 className="user-greeting">Welcome, {auth.user.username || auth.user.email}</h2>
-            <p className="user-email">{auth.user.email}</p>
+          {/* Quick Track Bar */}
+          <div className="quick-track-container">
+            <button className="quick-track-btn" onClick={handleTrackCurrentTab}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Track Current Tab Product</span>
+            </button>
           </div>
 
-          <div className="status-pill">
-            <span className="status-dot"></span>
-            Connected to PriceHawk Cloud
+          {/* Feedback messages */}
+          {actionSuccess && <div className="success-alert">{actionSuccess}</div>}
+          {error && <div className="error-alert">{error}</div>}
+
+          {/* Section Navigation Tabs */}
+          <div className="dashboard-nav-tabs">
+            <button
+              className={`dash-tab-btn ${dashboardTab === 'items' ? 'active' : ''}`}
+              onClick={() => setDashboardTab('items')}
+            >
+              <span>Tracked Items</span>
+              <span className="tab-count-badge">{products.length}</span>
+            </button>
+            <button
+              className={`dash-tab-btn ${dashboardTab === 'alerts' ? 'active' : ''}`}
+              onClick={() => setDashboardTab('alerts')}
+            >
+              <span>Alerts</span>
+              {unreadAlertsCount > 0 ? (
+                <span className="tab-count-badge unread">{unreadAlertsCount}</span>
+              ) : (
+                <span className="tab-count-badge">{alerts.length}</span>
+              )}
+            </button>
           </div>
 
-          <div className="profile-card">
-            <div className="profile-stat">
-              <span className="profile-stat-value">0</span>
-              <span className="profile-stat-label">Tracked Items</span>
+          {/* Tab Content: Tracked Items */}
+          {dashboardTab === 'items' && (
+            <div className="items-tab-content">
+              {fetchingData ? (
+                <div className="loading-state">
+                  <span className="spinner"></span>
+                  <span>Fetching tracked products...</span>
+                </div>
+              ) : products.length === 0 ? (
+                <div className="empty-state">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="m10 15 5-3-5-3v6z"></path>
+                  </svg>
+                  <p className="empty-title">No products tracked yet</p>
+                  <p className="empty-subtitle">Navigate to any product on Amazon or Flipkart and click "Track Current Tab".</p>
+                </div>
+              ) : (
+                <div className="products-list">
+                  {products.map((item) => {
+                    const source = item.sources?.[0] || {};
+                    return (
+                      <div key={item.id} className="product-card">
+                        <div className="card-thumb-container">
+                          {source.imageUrl ? (
+                            <img src={source.imageUrl} alt={item.title} className="product-thumbnail" />
+                          ) : (
+                            <div className="thumbnail-placeholder">📦</div>
+                          )}
+                        </div>
+                        <div className="card-details">
+                          <div className="card-top-row">
+                            <span className={`platform-pill ${source.platform?.toLowerCase() || 'other'}`}>
+                              {source.platform || 'OTHER'}
+                            </span>
+                            <button
+                              title="Delete item"
+                              className="delete-item-btn"
+                              onClick={() => handleDeleteProduct(item.id)}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          </div>
+                          <h3 className="card-title" title={item.title}>{item.title}</h3>
+                          <div className="card-price-row">
+                            <span className="current-price">
+                              ₹{source.currentPrice ? Number(source.currentPrice).toLocaleString('en-IN') : '—'}
+                            </span>
+                            {item.targetPrice && (
+                              <span className="target-price-label">
+                                Target: ₹{Number(item.targetPrice).toLocaleString('en-IN')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div style={{ width: '1px', height: '24px', background: 'var(--border-subtle)' }} />
-            <div className="profile-stat">
-              <span className="profile-stat-value">0</span>
-              <span className="profile-stat-label">Price Drops</span>
-            </div>
-          </div>
+          )}
 
-          <button className="logout-btn" onClick={handleLogout}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-            Sign Out
-          </button>
+          {/* Tab Content: Alerts */}
+          {dashboardTab === 'alerts' && (
+            <div className="alerts-tab-content">
+              {alerts.length === 0 ? (
+                <div className="empty-state">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                  <p className="empty-title">No price drop alerts yet</p>
+                  <p className="empty-subtitle">When prices on your tracked items drop, you'll see alerts here and via Resend email.</p>
+                </div>
+              ) : (
+                <div className="alerts-list">
+                  {alerts.map((alert) => (
+                    <div key={alert.id} className={`alert-card ${alert.isRead ? 'read' : 'unread'}`}>
+                      <div className="alert-card-header">
+                        <span className="alert-drop-badge">🚨 Price Drop</span>
+                        {!alert.isRead && (
+                          <button
+                            className="mark-read-btn"
+                            onClick={() => handleMarkAlertRead(alert.id)}
+                          >
+                            Mark as Read
+                          </button>
+                        )}
+                      </div>
+                      <h4 className="alert-item-title">{alert.itemTitle}</h4>
+                      <div className="alert-prices">
+                        <span className="old-price">₹{Number(alert.oldPrice).toLocaleString('en-IN')}</span>
+                        <span className="price-arrow">→</span>
+                        <span className="new-price">₹{Number(alert.newPrice).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <>
