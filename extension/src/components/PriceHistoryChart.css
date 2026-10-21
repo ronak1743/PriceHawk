@@ -1,20 +1,33 @@
+/* ==========================================================================
+   PriceHawk Price History Chart & Analytics Panel - Compact Executive Spec
+   Engineered for Precision, Contrast, and Space-Efficient Visual Analytics
+   ========================================================================== */
+
 .history-chart-card {
-  margin-top: 10px;
-  padding: 12px;
-  background: rgba(15, 23, 42, 0.65);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(11, 15, 23, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  animation: fadeIn 0.25s ease-out;
+  gap: 8px;
+  animation: fadeIn 0.2s ease;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
+/* Store Tabs Switcher */
 .chart-platform-tabs {
   display: flex;
   align-items: center;
@@ -29,28 +42,27 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 5px 8px;
   border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
   cursor: pointer;
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
   transition: all 0.2s ease;
 }
 
 .chart-plat-tab:hover {
-  background: rgba(30, 41, 59, 0.85);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
 .chart-plat-tab.amazon.active {
   background: rgba(245, 158, 11, 0.18);
-  border-color: rgba(245, 158, 11, 0.6);
+  border-color: rgba(245, 158, 11, 0.7);
   color: #fbbf24;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
 
 .chart-plat-tab.amazon .plat-tab-dot {
@@ -58,48 +70,50 @@
 }
 
 .chart-plat-tab.flipkart.active {
-  background: rgba(59, 130, 246, 0.18);
-  border-color: rgba(59, 130, 246, 0.6);
-  color: #60a5fa;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+  background: rgba(2, 132, 199, 0.2);
+  border-color: rgba(56, 189, 248, 0.7);
+  color: #38bdf8;
 }
 
 .chart-plat-tab.flipkart .plat-tab-dot {
-  color: #3b82f6;
+  color: #0ea5e9;
 }
 
 .plat-tab-name {
   text-transform: uppercase;
-  font-size: 0.65rem;
-  letter-spacing: 0.03em;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  font-weight: 800;
 }
 
 .plat-tab-price {
-  font-weight: 700;
-  font-size: 0.72rem;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Store summary badges */
 .chart-sources-summary {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  padding-bottom: 2px;
 }
 
 .chart-source-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-size: 0.65rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(30, 41, 59, 0.6);
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(17, 24, 39, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .chart-source-badge.amazon {
-  border-color: rgba(255, 153, 0, 0.3);
+  border-color: rgba(245, 158, 11, 0.35);
   color: #fbbf24;
 }
 
@@ -108,51 +122,59 @@
 }
 
 .chart-source-badge.flipkart {
-  border-color: rgba(40, 116, 240, 0.3);
-  color: #60a5fa;
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
 }
 
 .chart-source-badge.flipkart .source-dot {
-  color: #3b82f6;
+  color: #0ea5e9;
 }
 
 .source-name {
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  font-size: 0.58rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
 }
 
 .source-amt {
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Stats 3-Column Grid */
 .chart-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 5px;
 }
 
 .stat-pill {
-  background: rgba(30, 41, 59, 0.7);
+  background: rgba(8, 11, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 4px 6px;
   border-radius: 6px;
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .stat-label {
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .stat-value {
-  font-size: 0.76rem;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 800;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-value.low {
@@ -160,23 +182,28 @@
 }
 
 .stat-value.high {
-  color: #f87171;
+  color: #fda4af;
 }
 
+/* SVG Chart Container */
 .chart-wrapper {
   width: 100%;
-  height: 110px;
+  height: 220px;
+  min-height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 15, 30, 0.4);
-  border-radius: 6px;
+  background: #080b12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
   overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .price-svg {
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 .chart-loading {
@@ -184,14 +211,15 @@
   align-items: center;
   gap: 8px;
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .mini-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(99, 102, 241, 0.3);
-  border-top-color: #818cf8;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  border-top-color: #34d399;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -206,29 +234,32 @@
 
 .chart-point circle {
   cursor: pointer;
-  transition: r 0.15s ease, fill 0.15s ease;
+  transition: r 0.2s ease, fill 0.2s ease;
 }
 
 .chart-point:hover circle {
-  r: 5.5;
-  fill: #a5b4fc;
+  r: 5;
+  fill: #34d399;
 }
 
+/* Target Price Form */
 .target-price-form {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .target-input-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .target-label {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -243,59 +274,66 @@
 .target-currency-symbol {
   position: absolute;
   left: 8px;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
+  font-weight: 700;
   color: var(--text-muted);
   pointer-events: none;
 }
 
 .target-input {
   width: 100%;
-  padding: 4px 6px 4px 20px;
-  background: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 5px;
-  color: #fff;
+  padding: 5px 8px 5px 20px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: var(--font-heading);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
+  font-variant-numeric: tabular-nums;
 }
 
 .target-input:focus {
-  border-color: #6366f1;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
 }
 
 .save-target-btn {
-  padding: 4px 10px;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  padding: 5px 12px;
+  background: var(--accent-gradient);
   border: none;
-  border-radius: 5px;
-  color: #fff;
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: var(--font-heading);
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .save-target-btn:hover:not(:disabled) {
-  opacity: 0.9;
+  background: var(--accent-gradient-hover);
 }
 
 .save-target-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .target-error-msg {
   font-size: 0.68rem;
-  color: #f87171;
+  font-weight: 600;
+  color: #fda4af;
 }
 
+/* Alert Dropdown Checkbox */
 .alert-toggle-row {
   display: flex;
   align-items: center;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .toggle-label {
@@ -307,21 +345,22 @@
 }
 
 .toggle-checkbox {
-  accent-color: #6366f1;
+  accent-color: #10b981;
   width: 13px;
   height: 13px;
   cursor: pointer;
+  border-radius: 3px;
 }
 
 .toggle-text {
   font-size: 0.7rem;
   color: #cbd5e1;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .alert-meta-status {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
   border-radius: 5px;
   padding: 4px 8px;
   margin-top: 2px;
@@ -329,6 +368,7 @@
 
 .alert-meta-status span {
   font-size: 0.64rem;
-  color: #93c5fd;
+  color: #6ee7b7;
+  font-weight: 600;
   display: block;
 }

@@ -1,39 +1,44 @@
+/* ==========================================================================
+   PriceHawk Floating Sentinel Widget - Clean Modern Theme
+   ========================================================================== */
+
 .pricehawk-floating-sentinel {
   position: fixed;
   bottom: 24px;
   right: 24px;
   z-index: 2147483647;
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .ph-widget-inner {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 14px 8px 10px;
-  background: rgba(9, 13, 22, 0.95);
+  padding: 8px 16px 8px 10px;
+  background: rgba(11, 15, 25, 0.95);
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(99, 102, 241, 0.35);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 9999px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 16px rgba(99, 102, 241, 0.25);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.5), 0 0 16px rgba(14, 165, 233, 0.2);
+  transition: all 0.2s ease;
 }
 
 .ph-widget-inner:hover {
   transform: translateY(-2px);
-  border-color: rgba(99, 102, 241, 0.6);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(99, 102, 241, 0.4);
+  border-color: rgba(14, 165, 233, 0.6);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(14, 165, 233, 0.35);
 }
 
 .ph-badge-logo {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.4);
 }
 
 .ph-badge-logo svg {
@@ -48,29 +53,31 @@
 }
 
 .ph-badge-brand {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  color: #a5b4fc;
-  letter-spacing: 0.05em;
+  color: #7dd3fc;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .ph-badge-price {
+  font-family: 'Outfit', sans-serif;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   color: #10b981;
 }
 
 .ph-track-btn {
-  padding: 7px 14px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  padding: 7px 15px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
   border: none;
   border-radius: 9999px;
   color: #ffffff;
+  font-family: 'Outfit', sans-serif;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35);
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -78,7 +85,7 @@
 }
 
 .ph-track-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%);
   transform: scale(1.03);
 }
 
@@ -93,12 +100,11 @@
   right: 0;
   min-width: 240px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   animation: phFadeIn 0.2s ease-out;
-  transition: all 0.2s ease;
 }
 
 .ph-toast.hidden {
@@ -113,7 +119,7 @@
 
 .ph-toast.error {
   background: #7f1d1d;
-  border: 1px solid #ef4444;
+  border: 1px solid #f43f5e;
   color: #fca5a5;
 }
 

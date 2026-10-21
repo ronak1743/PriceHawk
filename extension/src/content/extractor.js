@@ -140,9 +140,15 @@ function extractFlipkartDetails(url) {
   const priceSelectors = [
     'div.Nx9bqj.CxhGGd',
     'div._30jeq3._16Jk6d',
+    'div.hl05eU div.Nx9bqj',
+    'div._25b18c div.Nx9bqj',
     'div.Nx9bqj',
     'div._30jeq3',
     'div._16Jk6d',
+    'div.hZ3P6w',
+    'div[class*="Nx9bqj"]',
+    'div[class*="30jeq3"]',
+    'span[class*="Nx9bqj"]',
   ];
 
   let currentPrice = null;
@@ -150,8 +156,28 @@ function extractFlipkartDetails(url) {
     const el = document.querySelector(selector);
     if (el && el.textContent) {
       currentPrice = parsePriceNumber(el.textContent);
-      if (currentPrice) break;
+      if (currentPrice && currentPrice > 0) break;
     }
+  }
+
+  // Script tag fallback if dynamic client DOM hides price class
+  if (!currentPrice) {
+    try {
+      const scripts = document.querySelectorAll('script');
+      for (const s of scripts) {
+        const text = s.textContent || '';
+        if (text.includes('"finalPrice"') || text.includes('"fsp"') || text.includes('"specialPrice"')) {
+          const m = text.match(/"(?:finalPrice|fsp|specialPrice)"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+          if (m && m[1]) {
+            const val = parseFloat(m[1]);
+            if (!isNaN(val) && val > 0) {
+              currentPrice = val;
+              break;
+            }
+          }
+        }
+      }
+    } catch {}
   }
 
   // Image

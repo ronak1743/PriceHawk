@@ -95,10 +95,10 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
   const currentPrice = prices[prices.length - 1];
 
   // SVG dimensions
-  const svgWidth = 310;
-  const svgHeight = 110;
-  const padX = 28;
-  const padY = 18;
+  const svgWidth = 460;
+  const svgHeight = 210;
+  const padX = 20;
+  const padY = 20;
 
   const getX = (idx) => {
     if (points.length <= 1) return svgWidth / 2;
@@ -180,13 +180,39 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
             <span>Loading price history...</span>
           </div>
         ) : points.length > 1 ? (
-          <svg className="price-svg" viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
+          <svg className="price-svg" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
             <defs>
               <linearGradient id={`grad-${product.id}-${activePlatform}`} x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor={theme.grad} stopOpacity="0.45" />
                 <stop offset="100%" stopColor={theme.grad} stopOpacity="0.0" />
               </linearGradient>
             </defs>
+
+            {/* Subtle Horizontal Reference Gridlines */}
+            <line
+              x1={padX}
+              y1={padY}
+              x2={svgWidth - padX}
+              y2={padY}
+              stroke="rgba(255, 255, 255, 0.05)"
+              strokeDasharray="4 4"
+            />
+            <line
+              x1={padX}
+              y1={svgHeight / 2}
+              x2={svgWidth - padX}
+              y2={svgHeight / 2}
+              stroke="rgba(255, 255, 255, 0.05)"
+              strokeDasharray="4 4"
+            />
+            <line
+              x1={padX}
+              y1={svgHeight - padY}
+              x2={svgWidth - padX}
+              y2={svgHeight - padY}
+              stroke="rgba(255, 255, 255, 0.05)"
+              strokeDasharray="4 4"
+            />
 
             {/* Target price dashed line */}
             {targetY !== null && (

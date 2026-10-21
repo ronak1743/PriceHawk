@@ -273,7 +273,7 @@ export default function App() {
                       try {
                         const keys = Object.keys(JSON.parse(dyn));
                         if (keys.length > 0 && keys[0].startsWith('http')) { imageUrl = keys[0]; break; }
-                      } catch {}
+                      } catch { }
                     }
                     const hires = el.getAttribute('data-old-hires');
                     if (hires && hires.startsWith('http')) { imageUrl = hires; break; }
@@ -284,14 +284,42 @@ export default function App() {
                   const tEl = document.querySelector('span.VU-ZEz') || document.querySelector('span.B_NuCI') || document.querySelector('h1');
                   if (tEl) title = tEl.textContent.trim();
 
-                  const pSelectors = ['div.Nx9bqj.CxhGGd', 'div._30jeq3._16Jk6d', 'div.Nx9bqj'];
+                  const pSelectors = [
+                    'div.Nx9bqj.CxhGGd',
+                    'div._30jeq3._16Jk6d',
+                    'div.hl05eU div.Nx9bqj',
+                    'div._25b18c div.Nx9bqj',
+                    'div.Nx9bqj',
+                    'div._30jeq3',
+                    'div._16Jk6d',
+                    'div.hZ3P6w',
+                    'div[class*="Nx9bqj"]',
+                    'div[class*="30jeq3"]',
+                    'span[class*="Nx9bqj"]',
+                  ];
                   for (const s of pSelectors) {
                     const el = document.querySelector(s);
                     if (el && el.textContent) {
                       const clean = el.textContent.replace(/[^0-9.]/g, '');
                       const val = parseFloat(clean);
-                      if (!isNaN(val)) { price = val; break; }
+                      if (!isNaN(val) && val > 0) { price = val; break; }
                     }
+                  }
+
+                  if (!price) {
+                    try {
+                      const scripts = document.querySelectorAll('script');
+                      for (const s of scripts) {
+                        const text = s.textContent || '';
+                        if (text.includes('"finalPrice"') || text.includes('"fsp"') || text.includes('"specialPrice"')) {
+                          const m = text.match(/"(?:finalPrice|fsp|specialPrice)"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+                          if (m && m[1]) {
+                            const val = parseFloat(m[1]);
+                            if (!isNaN(val) && val > 0) { price = val; break; }
+                          }
+                        }
+                      }
+                    } catch { }
                   }
 
                   const imgEl = document.querySelector('img.DByuf4, img._396cs4._2amPTt, img._396cs4, img[src*="rukminim"]');
@@ -348,38 +376,46 @@ export default function App() {
                 <line x1="12" y1="22.08" x2="12" y2="12"></line>
               </svg>
             </div>
-            <h1 className="brand-title">PriceHawk</h1>
+            <div className="brand-text-col">
+              <div className="brand-title-row">
+                <h1 className="brand-title">PriceHawk</h1>
+                <span className="version-pill">v1.0 Pro</span>
+              </div>
+              <p className="brand-subtitle">
+                <span className="brand-subtitle-dot" aria-hidden="true"></span>
+                Amazon &amp; Flipkart Tracker
+              </p>
+            </div>
           </div>
-          <span className="version-pill">v1.0 Pro</span>
+
+          {auth?.user ? (
+            <div className="header-user-side">
+              <div className="user-bar-left">
+                <div className="user-avatar-small">
+                  {(auth.user.username || auth.user.email || 'U').charAt(0).toUpperCase()}
+                </div>
+                <div className="user-bar-names">
+                  <span className="user-greeting">Welcome, {auth.user.username || auth.user.email}</span>
+                  <span className="user-email-badge">{auth.user.email}</span>
+                </div>
+              </div>
+              <button className="logout-icon-btn" onClick={handleLogout} title="Sign Out">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          ) : (
+            <span className="version-pill">v1.0 Pro</span>
+          )}
         </div>
-        <p className="brand-subtitle">
-          <span className="brand-subtitle-dot" aria-hidden="true"></span>
-          Intelligent Price Tracking for Amazon &amp; Flipkart
-        </p>
       </header>
 
       {auth?.user ? (
         <div className="dashboard-container">
-          {/* Top user bar */}
-          <div className="dashboard-user-bar">
-            <div className="user-bar-left">
-              <div className="user-avatar-small">
-                {(auth.user.username || auth.user.email || 'U').charAt(0).toUpperCase()}
-              </div>
-              <div className="user-bar-names">
-                <span className="user-greeting">Welcome, {auth.user.username || auth.user.email}</span>
-                <span className="user-email-badge">{auth.user.email}</span>
-              </div>
-            </div>
-            <button className="logout-icon-btn" onClick={handleLogout} title="Sign Out">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-              <span>Sign Out</span>
-            </button>
-          </div>
 
           {/* Quick Track Bar */}
           <div className="quick-track-container">
@@ -811,9 +847,11 @@ export default function App() {
         </>
       )}
 
+      {/* Bottom Centered Status Footer */}
       <footer className="popup-footer">
         <span>🛡️ Real-time Price Drop Alerts</span>
       </footer>
     </div>
   );
 }
+
