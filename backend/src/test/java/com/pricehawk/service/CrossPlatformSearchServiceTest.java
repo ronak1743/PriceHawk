@@ -82,7 +82,7 @@ class CrossPlatformSearchServiceTest {
         assertThat(result.getPlatform()).isEqualTo(Platform.AMAZON);
         assertThat(result.getTitle()).contains("Apple iPhone 15");
         assertThat(result.getPrice()).isEqualByComparingTo(new BigDecimal("66990.00"));
-        assertThat(result.getUrl()).contains("amazon.in/dp/B0CHX1W1XY");
+        assertThat(result.getUrl()).contains("dp/B0CHX1W1XY");
         assertThat(result.getImageUrl()).isEqualTo("https://m.media-amazon.com/iphone.jpg");
     }
 

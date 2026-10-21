@@ -26,17 +26,20 @@ public class DefaultProductService implements ProductService {
     private final ItemSourceRepository itemSourceRepository;
     private final com.pricehawk.scraper.PriceScraperService priceScraperService;
     private final PriceTrackingService priceTrackingService;
+    private final CrossPlatformSearchService crossPlatformSearchService;
 
     public DefaultProductService(UserRepository userRepository,
                                  TrackedItemRepository trackedItemRepository,
                                  ItemSourceRepository itemSourceRepository,
                                  com.pricehawk.scraper.PriceScraperService priceScraperService,
-                                 PriceTrackingService priceTrackingService) {
+                                 PriceTrackingService priceTrackingService,
+                                 CrossPlatformSearchService crossPlatformSearchService) {
         this.userRepository = userRepository;
         this.trackedItemRepository = trackedItemRepository;
         this.itemSourceRepository = itemSourceRepository;
         this.priceScraperService = priceScraperService;
         this.priceTrackingService = priceTrackingService;
+        this.crossPlatformSearchService = crossPlatformSearchService;
     }
 
     @Override
@@ -117,6 +120,49 @@ public class DefaultProductService implements ProductService {
         item.setTargetPrice(targetPrice);
         TrackedItem saved = trackedItemRepository.save(item);
         return mapToResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public TrackedItemResponse addProductSource(Long userId, Long productId, com.pricehawk.dto.AddProductSourceRequest request) {
+        TrackedItem item = trackedItemRepository.findByIdAndUserId(productId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
+
+        if (request.isAutoDiscover()) {
+            Platform currentPlatform = item.getSources() != null && !item.getSources().isEmpty()
+                    ? item.getSources().get(0).getPlatform()
+                    : Platform.AMAZON;
+
+            com.pricehawk.scraper.ScrapedProduct counterpart = crossPlatformSearchService.findCounterpartProduct(currentPlatform, item.getTitle());
+            if (counterpart != null && counterpart.getUrl() != null) {
+                ItemSource source = new ItemSource(
+                        item,
+                        counterpart.getPlatform(),
+                        counterpart.getUrl(),
+                        counterpart.getPrice(),
+                        counterpart.getPrice(),
+                        counterpart.getCurrency(),
+                        counterpart.getImageUrl()
+                );
+                item.addSource(source);
+                trackedItemRepository.save(item);
+            }
+        } else if (request.getUrl() != null && !request.getUrl().isBlank()) {
+            Platform platform = Platform.fromUrl(request.getUrl());
+            ItemSource source = new ItemSource(
+                    item,
+                    platform,
+                    request.getUrl(),
+                    request.getCurrentPrice(),
+                    request.getCurrentPrice(),
+                    "INR",
+                    request.getImageUrl()
+            );
+            item.addSource(source);
+            trackedItemRepository.save(item);
+        }
+
+        return mapToResponse(item);
     }
 
     private TrackedItemResponse mapToResponse(TrackedItem item) {

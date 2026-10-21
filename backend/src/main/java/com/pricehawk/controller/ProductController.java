@@ -72,4 +72,13 @@ public class ProductController {
         TrackedItemResponse response = productService.updateTargetPrice(principal.getId(), id, request.getTargetPrice());
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/{id}/sources")
+    public ResponseEntity<TrackedItemResponse> addProductSource(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.pricehawk.dto.AddProductSourceRequest request) {
+        TrackedItemResponse response = productService.addProductSource(principal.getId(), id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 }

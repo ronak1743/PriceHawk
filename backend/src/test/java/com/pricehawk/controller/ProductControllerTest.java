@@ -472,6 +472,7 @@ class ProductControllerTest {
                         new BigDecimal("47990.00"),
                         "INR",
                         "https://img.flipkart.com/iphone.jpg",
+                        "https://www.flipkart.com/apple-iphone-12/p/itm123?pid=IPH12",
                         true,
                         Platform.FLIPKART
                 ));

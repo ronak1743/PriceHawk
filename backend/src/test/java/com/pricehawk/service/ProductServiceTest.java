@@ -48,6 +48,9 @@ class ProductServiceTest {
     @Mock
     private PriceTrackingService priceTrackingService;
 
+    @Mock
+    private CrossPlatformSearchService crossPlatformSearchService;
+
     private ProductService productService;
 
     private User testUser;
@@ -59,7 +62,8 @@ class ProductServiceTest {
                 trackedItemRepository,
                 itemSourceRepository,
                 priceScraperService,
-                priceTrackingService
+                priceTrackingService,
+                crossPlatformSearchService
         );
         testUser = new User("testuser", "test@example.com", "hash123");
         testUser.setId(1L);
@@ -250,6 +254,65 @@ class ProductServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(item.getTargetPrice()).isEqualByComparingTo(new BigDecimal("45000.00"));
+        verify(trackedItemRepository).save(item);
+    }
+
+    @Test
+    @DisplayName("addProductSource - manual URL adds source and saves")
+    void addProductSource_manualUrl_addsSource() {
+        TrackedItem item = new TrackedItem(testUser, "Laptop", new BigDecimal("50000.00"));
+        item.setId(10L);
+        ItemSource source1 = new ItemSource(item, Platform.AMAZON, "https://www.amazon.in/dp/B08L5WHJ2V", new BigDecimal("55000.00"), new BigDecimal("55000.00"), "INR", null);
+        item.addSource(source1);
+
+        when(trackedItemRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(item));
+        when(trackedItemRepository.save(item)).thenReturn(item);
+
+        com.pricehawk.dto.AddProductSourceRequest req = new com.pricehawk.dto.AddProductSourceRequest(
+                "https://www.flipkart.com/laptop/p/itm123?pid=LAPTOP123",
+                new BigDecimal("53000.00"),
+                "https://img.jpg",
+                false
+        );
+
+        TrackedItemResponse response = productService.addProductSource(1L, 10L, req);
+
+        assertThat(response).isNotNull();
+        assertThat(item.getSources()).hasSize(2);
+        assertThat(item.getSources().get(1).getPlatform()).isEqualTo(Platform.FLIPKART);
+        verify(trackedItemRepository).save(item);
+    }
+
+    @Test
+    @DisplayName("addProductSource - autoDiscover finds counterpart product and adds source")
+    void addProductSource_autoDiscover_addsCounterpart() {
+        TrackedItem item = new TrackedItem(testUser, "iPhone 15", new BigDecimal("65000.00"));
+        item.setId(10L);
+        ItemSource source1 = new ItemSource(item, Platform.AMAZON, "https://www.amazon.in/dp/B08L5WHJ2V", new BigDecimal("69999.00"), new BigDecimal("69999.00"), "INR", null);
+        item.addSource(source1);
+
+        when(trackedItemRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(item));
+        when(trackedItemRepository.save(item)).thenReturn(item);
+        when(crossPlatformSearchService.findCounterpartProduct(eq(Platform.AMAZON), eq("iPhone 15")))
+                .thenReturn(new com.pricehawk.scraper.ScrapedProduct(
+                        "iPhone 15 (Black, 128 GB)",
+                        new BigDecimal("67990.00"),
+                        "INR",
+                        "https://img.jpg",
+                        "https://www.flipkart.com/iphone-15/p/itm123?pid=IPH15",
+                        true,
+                        Platform.FLIPKART
+                ));
+
+        com.pricehawk.dto.AddProductSourceRequest req = new com.pricehawk.dto.AddProductSourceRequest();
+        req.setAutoDiscover(true);
+
+        TrackedItemResponse response = productService.addProductSource(1L, 10L, req);
+
+        assertThat(response).isNotNull();
+        assertThat(item.getSources()).hasSize(2);
+        assertThat(item.getSources().get(1).getPlatform()).isEqualTo(Platform.FLIPKART);
+        assertThat(item.getSources().get(1).getCurrentPrice()).isEqualByComparingTo(new BigDecimal("67990.00"));
         verify(trackedItemRepository).save(item);
     }
 }
