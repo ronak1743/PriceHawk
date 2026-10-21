@@ -10,4 +10,7 @@ import java.util.List;
 public interface ItemSourceRepository extends JpaRepository<ItemSource, Long> {
 
     List<ItemSource> findByTrackedItemId(Long trackedItemId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM ItemSource s JOIN FETCH s.trackedItem t JOIN FETCH t.user u")
+    List<ItemSource> findAllActiveSourcesWithUser();
 }

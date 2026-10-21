@@ -55,4 +55,12 @@ public class ProductController {
         productService.deleteTrackedProduct(principal.getId(), id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/refresh")
+    public ResponseEntity<TrackedItemResponse> refreshProduct(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable Long id) {
+        TrackedItemResponse response = productService.refreshProductPrice(principal.getId(), id);
+        return ResponseEntity.ok(response);
+    }
 }

@@ -42,13 +42,25 @@ class ProductServiceTest {
     @Mock
     private ItemSourceRepository itemSourceRepository;
 
+    @Mock
+    private com.pricehawk.scraper.PriceScraperService priceScraperService;
+
+    @Mock
+    private PriceTrackingService priceTrackingService;
+
     private ProductService productService;
 
     private User testUser;
 
     @BeforeEach
     void setUp() {
-        productService = new DefaultProductService(userRepository, trackedItemRepository, itemSourceRepository);
+        productService = new DefaultProductService(
+                userRepository,
+                trackedItemRepository,
+                itemSourceRepository,
+                priceScraperService,
+                priceTrackingService
+        );
         testUser = new User("testuser", "test@example.com", "hash123");
         testUser.setId(1L);
     }
@@ -203,5 +215,25 @@ class ProductServiceTest {
                 .hasMessageContaining("Tracked item not found");
 
         verify(trackedItemRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("refreshProductPrice - scrapes item source URL and records price update")
+    void refreshProductPrice_success() {
+        TrackedItem item = new TrackedItem(testUser, "Laptop", new BigDecimal("50000.00"));
+        item.setId(10L);
+        ItemSource source = new ItemSource(item, Platform.AMAZON, "https://www.amazon.in/dp/B08L5WHJ2V", new BigDecimal("55000.00"), new BigDecimal("55000.00"), "INR", null);
+        item.addSource(source);
+
+        when(trackedItemRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(item));
+        when(priceScraperService.scrapeProduct("https://www.amazon.in/dp/B08L5WHJ2V"))
+                .thenReturn(new com.pricehawk.scraper.ScrapedProduct("Laptop", new BigDecimal("52000.00"), "INR", "https://img.jpg", true, Platform.AMAZON));
+
+        TrackedItemResponse response = productService.refreshProductPrice(1L, 10L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(10L);
+        verify(priceScraperService).scrapeProduct("https://www.amazon.in/dp/B08L5WHJ2V");
+        verify(priceTrackingService).recordPriceUpdate(eq(source), eq(new BigDecimal("52000.00")), eq(true));
     }
 }

@@ -24,13 +24,19 @@ public class DefaultProductService implements ProductService {
     private final UserRepository userRepository;
     private final TrackedItemRepository trackedItemRepository;
     private final ItemSourceRepository itemSourceRepository;
+    private final com.pricehawk.scraper.PriceScraperService priceScraperService;
+    private final PriceTrackingService priceTrackingService;
 
     public DefaultProductService(UserRepository userRepository,
                                  TrackedItemRepository trackedItemRepository,
-                                 ItemSourceRepository itemSourceRepository) {
+                                 ItemSourceRepository itemSourceRepository,
+                                 com.pricehawk.scraper.PriceScraperService priceScraperService,
+                                 PriceTrackingService priceTrackingService) {
         this.userRepository = userRepository;
         this.trackedItemRepository = trackedItemRepository;
         this.itemSourceRepository = itemSourceRepository;
+        this.priceScraperService = priceScraperService;
+        this.priceTrackingService = priceTrackingService;
     }
 
     @Override
@@ -76,6 +82,30 @@ public class DefaultProductService implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
 
         trackedItemRepository.delete(item);
+    }
+
+    @Override
+    @Transactional
+    public TrackedItemResponse refreshProductPrice(Long userId, Long productId) {
+        TrackedItem item = trackedItemRepository.findByIdAndUserId(productId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
+
+        if (item.getSources() != null) {
+            for (ItemSource source : item.getSources()) {
+                if (source.getUrl() != null && !source.getUrl().isBlank()) {
+                    try {
+                        com.pricehawk.scraper.ScrapedProduct scraped = priceScraperService.scrapeProduct(source.getUrl());
+                        if (scraped != null && scraped.getPrice() != null) {
+                            priceTrackingService.recordPriceUpdate(source, scraped.getPrice(), scraped.isInStock());
+                        }
+                    } catch (Exception e) {
+                        // Logging or continuing on error
+                    }
+                }
+            }
+        }
+
+        return mapToResponse(item);
     }
 
     private TrackedItemResponse mapToResponse(TrackedItem item) {

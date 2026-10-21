@@ -52,6 +52,12 @@ class ProductControllerTest {
     private ItemSourceRepository itemSourceRepository;
 
     @Autowired
+    private com.pricehawk.repository.PriceHistoryRepository priceHistoryRepository;
+
+    @Autowired
+    private com.pricehawk.repository.PriceAlertRepository priceAlertRepository;
+
+    @Autowired
     private JwtService jwtService;
 
     @MockBean
@@ -64,6 +70,8 @@ class ProductControllerTest {
 
     @BeforeEach
     void setUp() {
+        priceAlertRepository.deleteAll();
+        priceHistoryRepository.deleteAll();
         itemSourceRepository.deleteAll();
         trackedItemRepository.deleteAll();
         userRepository.deleteAll();

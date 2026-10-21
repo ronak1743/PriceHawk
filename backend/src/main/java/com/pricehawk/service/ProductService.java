@@ -12,4 +12,6 @@ public interface ProductService {
     List<TrackedItemResponse> getTrackedProducts(Long userId);
 
     void deleteTrackedProduct(Long userId, Long productId);
+
+    TrackedItemResponse refreshProductPrice(Long userId, Long productId);
 }
