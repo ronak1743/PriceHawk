@@ -96,3 +96,17 @@ export async function markAlertRead(token, id) {
   if (!response.ok) throw new Error('Failed to mark alert as read');
   return true;
 }
+
+export async function refreshProduct(token, id) {
+  const response = await fetch(`${API_BASE}/products/${id}/refresh`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to refresh product price');
+  }
+  return response.json();
+}

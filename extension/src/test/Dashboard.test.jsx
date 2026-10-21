@@ -186,4 +186,54 @@ describe('App - Tracker Dashboard UI', () => {
       expect(screen.queryByRole('button', { name: /Mark as Read/i })).not.toBeInTheDocument();
     });
   });
+
+  it('refreshes a tracked item price when refresh button is clicked', async () => {
+    const refreshedItem = {
+      ...mockProducts[0],
+      sources: [
+        {
+          ...mockProducts[0].sources[0],
+          currentPrice: 62000.00,
+        },
+      ],
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/products/101/refresh') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => refreshedItem,
+        });
+      }
+      if (url.includes('/products')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockProducts,
+        });
+      }
+      if (url.includes('/alerts')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [],
+        });
+      }
+      return Promise.reject(new Error('Unknown URL: ' + url));
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/₹69,999/i)).toBeInTheDocument();
+    });
+
+    const refreshBtn = screen.getByTitle(/Refresh live price/i);
+    fireEvent.click(refreshBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/₹62,000/i)).toBeInTheDocument();
+    });
+  });
 });

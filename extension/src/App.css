@@ -679,6 +679,41 @@ body {
   border: 1px solid rgba(40, 116, 240, 0.3);
 }
 
+.card-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.action-icon-btn.refresh-btn:hover {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.18);
+  transform: rotate(30deg);
+}
+
+.action-icon-btn.refresh-btn.spinning svg {
+  animation: spin 0.7s linear infinite;
+  color: #818cf8;
+}
+
+.action-icon-btn.delete-btn:hover {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+}
+
 .delete-item-btn {
   background: transparent;
   border: none;

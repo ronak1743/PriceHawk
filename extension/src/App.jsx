@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, setAuth as saveAuth, clearAuth } from './services/storage';
-import { login, register, getProducts, deleteProduct, getAlerts, markAlertRead, trackProduct } from './services/api';
+import { login, register, getProducts, deleteProduct, getAlerts, markAlertRead, trackProduct, refreshProduct } from './services/api';
 import './App.css';
 
 export default function App() {
@@ -17,6 +17,7 @@ export default function App() {
   const [products, setProducts] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [fetchingData, setFetchingData] = useState(false);
+  const [refreshingId, setRefreshingId] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
 
   useEffect(() => {
@@ -120,6 +121,22 @@ export default function App() {
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err) {
       setError(err.message || 'Failed to delete item');
+    }
+  };
+
+  const handleRefreshProduct = async (productId) => {
+    if (!auth?.token || refreshingId) return;
+    setRefreshingId(productId);
+    setError(null);
+    try {
+      const updated = await refreshProduct(auth.token, productId);
+      setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+      setActionSuccess('Price refreshed successfully!');
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to refresh price');
+    } finally {
+      setRefreshingId(null);
     }
   };
 
@@ -386,16 +403,30 @@ export default function App() {
                             <span className={`platform-pill ${source.platform?.toLowerCase() || 'other'}`}>
                               {source.platform || 'OTHER'}
                             </span>
-                            <button
-                              title="Delete item"
-                              className="delete-item-btn"
-                              onClick={() => handleDeleteProduct(item.id)}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                              </svg>
-                            </button>
+                            <div className="card-actions-group">
+                              <button
+                                title="Refresh live price"
+                                className={`action-icon-btn refresh-btn ${refreshingId === item.id ? 'spinning' : ''}`}
+                                onClick={() => handleRefreshProduct(item.id)}
+                                disabled={refreshingId === item.id}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="23 4 23 10 17 10"></polyline>
+                                  <polyline points="1 20 1 14 7 14"></polyline>
+                                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                              </button>
+                              <button
+                                title="Delete item"
+                                className="action-icon-btn delete-btn"
+                                onClick={() => handleDeleteProduct(item.id)}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                           <h3 className="card-title" title={item.title}>{item.title}</h3>
                           <div className="card-price-row">
