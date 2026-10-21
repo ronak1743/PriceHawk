@@ -15,6 +15,117 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+.chart-platform-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chart-plat-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.chart-plat-tab:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.chart-plat-tab.amazon.active {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.6);
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.chart-plat-tab.amazon .plat-tab-dot {
+  color: #f59e0b;
+}
+
+.chart-plat-tab.flipkart.active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #60a5fa;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
+
+.chart-plat-tab.flipkart .plat-tab-dot {
+  color: #3b82f6;
+}
+
+.plat-tab-name {
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.03em;
+}
+
+.plat-tab-price {
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.chart-sources-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+
+.chart-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chart-source-badge.amazon {
+  border-color: rgba(255, 153, 0, 0.3);
+  color: #fbbf24;
+}
+
+.chart-source-badge.amazon .source-dot {
+  color: #f59e0b;
+}
+
+.chart-source-badge.flipkart {
+  border-color: rgba(40, 116, 240, 0.3);
+  color: #60a5fa;
+}
+
+.chart-source-badge.flipkart .source-dot {
+  color: #3b82f6;
+}
+
+.source-name {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.58rem;
+}
+
+.source-amt {
+  font-weight: 700;
+}
+
 .chart-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

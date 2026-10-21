@@ -340,4 +340,135 @@ describe('App - Tracker Dashboard UI', () => {
       expect(screen.getByText(/Target: ₹63,000/i)).toBeInTheDocument();
     });
   });
+
+  it('auto-matches Flipkart counterpart and displays side-by-side pricing with best deal badge', async () => {
+    const multiSourceProduct = {
+      ...mockProducts[0],
+      sources: [
+        mockProducts[0].sources[0], // AMAZON: 69999.00
+        {
+          id: 202,
+          platform: 'FLIPKART',
+          url: 'https://www.flipkart.com/apple-iphone-15/p/itm123',
+          currentPrice: 67990.00,
+          originalPrice: 72000.00,
+          currency: 'INR',
+          imageUrl: 'https://img.flipkart.com/iphone15.jpg',
+          inStock: true,
+        },
+      ],
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/products/101/sources') && opts?.method === 'POST') {
+        const body = JSON.parse(opts.body);
+        expect(body.autoDiscover).toBe(true);
+        return Promise.resolve({
+          ok: true,
+          status: 201,
+          json: async () => multiSourceProduct,
+        });
+      }
+      if (url.includes('/products')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockProducts,
+        });
+      }
+      if (url.includes('/alerts')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [],
+        });
+      }
+      return Promise.reject(new Error('Unknown URL: ' + url));
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Apple iPhone 15/i)).toBeInTheDocument();
+    });
+
+    // Verify auto-match button is visible for single Amazon item
+    const autoMatchBtn = screen.getByRole('button', { name: /Auto-Match on Flipkart/i });
+    expect(autoMatchBtn).toBeInTheDocument();
+
+    fireEvent.click(autoMatchBtn);
+
+    // Verify side-by-side sources and best deal badge appear
+    await waitFor(() => {
+      expect(screen.getByText(/Best Deal on/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Save ₹2,009/i)).toBeInTheDocument();
+    expect(screen.getByText(/₹67,990/i)).toBeInTheDocument();
+    expect(screen.getByText(/^BEST$/)).toBeInTheDocument();
+  });
+
+  it('manually links counterpart URL via paste URL form', async () => {
+    const multiSourceProduct = {
+      ...mockProducts[0],
+      sources: [
+        mockProducts[0].sources[0],
+        {
+          id: 202,
+          platform: 'FLIPKART',
+          url: 'https://www.flipkart.com/apple-iphone-15/p/itm123',
+          currentPrice: 67990.00,
+          currency: 'INR',
+          inStock: true,
+        },
+      ],
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/products/101/sources') && opts?.method === 'POST') {
+        const body = JSON.parse(opts.body);
+        expect(body.url).toBe('https://www.flipkart.com/apple-iphone-15/p/itm123');
+        expect(body.autoDiscover).toBe(false);
+        return Promise.resolve({
+          ok: true,
+          status: 201,
+          json: async () => multiSourceProduct,
+        });
+      }
+      if (url.includes('/products')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockProducts,
+        });
+      }
+      if (url.includes('/alerts')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [],
+        });
+      }
+      return Promise.reject(new Error('Unknown URL: ' + url));
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Apple iPhone 15/i)).toBeInTheDocument();
+    });
+
+    const togglePasteBtn = screen.getByRole('button', { name: /\+ Paste URL/i });
+    fireEvent.click(togglePasteBtn);
+
+    const urlInput = screen.getByPlaceholderText(/Paste Flipkart URL/i);
+    fireEvent.change(urlInput, { target: { value: 'https://www.flipkart.com/apple-iphone-15/p/itm123' } });
+
+    const linkSubmitBtn = screen.getByRole('button', { name: /^Link$/i });
+    fireEvent.click(linkSubmitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/₹67,990/i)).toBeInTheDocument();
+    });
+  });
 });

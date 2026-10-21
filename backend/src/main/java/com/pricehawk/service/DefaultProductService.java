@@ -21,9 +21,13 @@ import java.util.stream.Collectors;
 @Service
 public class DefaultProductService implements ProductService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DefaultProductService.class);
+
     private final UserRepository userRepository;
     private final TrackedItemRepository trackedItemRepository;
     private final ItemSourceRepository itemSourceRepository;
+    private final com.pricehawk.repository.PriceHistoryRepository priceHistoryRepository;
+    private final com.pricehawk.repository.PriceAlertRepository priceAlertRepository;
     private final com.pricehawk.scraper.PriceScraperService priceScraperService;
     private final PriceTrackingService priceTrackingService;
     private final CrossPlatformSearchService crossPlatformSearchService;
@@ -31,12 +35,16 @@ public class DefaultProductService implements ProductService {
     public DefaultProductService(UserRepository userRepository,
                                  TrackedItemRepository trackedItemRepository,
                                  ItemSourceRepository itemSourceRepository,
+                                 com.pricehawk.repository.PriceHistoryRepository priceHistoryRepository,
+                                 com.pricehawk.repository.PriceAlertRepository priceAlertRepository,
                                  com.pricehawk.scraper.PriceScraperService priceScraperService,
                                  PriceTrackingService priceTrackingService,
                                  CrossPlatformSearchService crossPlatformSearchService) {
         this.userRepository = userRepository;
         this.trackedItemRepository = trackedItemRepository;
         this.itemSourceRepository = itemSourceRepository;
+        this.priceHistoryRepository = priceHistoryRepository;
+        this.priceAlertRepository = priceAlertRepository;
         this.priceScraperService = priceScraperService;
         this.priceTrackingService = priceTrackingService;
         this.crossPlatformSearchService = crossPlatformSearchService;
@@ -84,7 +92,12 @@ public class DefaultProductService implements ProductService {
         TrackedItem item = trackedItemRepository.findByIdAndUserId(productId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
 
+        // Delete dependent price alerts and price history records first to preserve database FK integrity
+        priceAlertRepository.deleteByTrackedItemId(productId);
+        priceHistoryRepository.deleteByItemSourceTrackedItemId(productId);
+
         trackedItemRepository.delete(item);
+        log.info("Successfully deleted tracked item {} for user {}", productId, userId);
     }
 
     @Override
@@ -100,9 +113,11 @@ public class DefaultProductService implements ProductService {
                         com.pricehawk.scraper.ScrapedProduct scraped = priceScraperService.scrapeProduct(source.getUrl());
                         if (scraped != null && scraped.getPrice() != null) {
                             priceTrackingService.recordPriceUpdate(source, scraped.getPrice(), scraped.isInStock());
+                            log.info("Refreshed price for item {} ({}) to {}", item.getId(), source.getPlatform(), scraped.getPrice());
                         }
                     } catch (Exception e) {
-                        // Logging or continuing on error
+                        log.warn("Failed to refresh price for item {} ({}) via URL: {} - {}",
+                                item.getId(), source.getPlatform(), source.getUrl(), e.getMessage());
                     }
                 }
             }
@@ -132,9 +147,16 @@ public class DefaultProductService implements ProductService {
             Platform currentPlatform = item.getSources() != null && !item.getSources().isEmpty()
                     ? item.getSources().get(0).getPlatform()
                     : Platform.AMAZON;
+            Platform counterpartPlatform = currentPlatform == Platform.AMAZON ? Platform.FLIPKART : Platform.AMAZON;
 
             com.pricehawk.scraper.ScrapedProduct counterpart = crossPlatformSearchService.findCounterpartProduct(currentPlatform, item.getTitle());
-            if (counterpart != null && counterpart.getUrl() != null) {
+            if (counterpart == null || counterpart.getUrl() == null) {
+                throw new ResourceNotFoundException("No matching counterpart found on " + counterpartPlatform + ". You can link it manually with '+ Paste URL'.");
+            }
+
+            boolean alreadyLinked = item.getSources().stream()
+                    .anyMatch(s -> s.getPlatform() == counterpart.getPlatform());
+            if (!alreadyLinked) {
                 ItemSource source = new ItemSource(
                         item,
                         counterpart.getPlatform(),

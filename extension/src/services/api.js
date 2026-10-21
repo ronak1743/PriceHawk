@@ -136,3 +136,20 @@ export async function updateTargetPrice(token, id, targetPrice) {
   }
   return response.json();
 }
+
+export async function addProductSource(token, id, { url, autoDiscover }) {
+  const response = await fetch(`${API_BASE}/products/${id}/sources`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ url: url || null, autoDiscover: Boolean(autoDiscover) }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to add counterpart source');
+  }
+  return data;
+}
+

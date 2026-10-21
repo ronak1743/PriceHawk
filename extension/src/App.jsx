@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, setAuth as saveAuth, clearAuth } from './services/storage';
-import { login, register, getProducts, deleteProduct, getAlerts, markAlertRead, trackProduct, refreshProduct } from './services/api';
+import { login, register, getProducts, deleteProduct, getAlerts, markAlertRead, trackProduct, refreshProduct, addProductSource } from './services/api';
 import PriceHistoryChart from './components/PriceHistoryChart';
 import './App.css';
 
@@ -19,6 +19,9 @@ export default function App() {
   const [alerts, setAlerts] = useState([]);
   const [fetchingData, setFetchingData] = useState(false);
   const [refreshingId, setRefreshingId] = useState(null);
+  const [matchingId, setMatchingId] = useState(null);
+  const [linkingId, setLinkingId] = useState(null);
+  const [manualUrl, setManualUrl] = useState('');
   const [expandedProductId, setExpandedProductId] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
 
@@ -139,6 +142,49 @@ export default function App() {
       setError(err.message || 'Failed to refresh price');
     } finally {
       setRefreshingId(null);
+    }
+  };
+
+  const handleAutoMatch = async (productId) => {
+    if (!auth?.token || matchingId) return;
+    setMatchingId(productId);
+    setError(null);
+    try {
+      const updated = await addProductSource(auth.token, productId, { autoDiscover: true });
+      const current = products.find((p) => p.id === productId);
+      const isNewSourceAdded = updated.sources && updated.sources.length > (current?.sources?.length || 0);
+
+      setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+
+      if (isNewSourceAdded) {
+        setActionSuccess('Counterpart product auto-matched & linked!');
+        setTimeout(() => setActionSuccess(null), 3000);
+      } else {
+        setError('No counterpart found on other platform. Try pasting the link directly with "+ Paste URL".');
+      }
+    } catch (err) {
+      setError(err.message || 'Could not auto-match counterpart on other platform');
+    } finally {
+      setMatchingId(null);
+    }
+  };
+
+  const handleManualLink = async (e, productId) => {
+    e.preventDefault();
+    if (!auth?.token || !manualUrl.trim() || matchingId) return;
+    setMatchingId(productId);
+    setError(null);
+    try {
+      const updated = await addProductSource(auth.token, productId, { url: manualUrl.trim(), autoDiscover: false });
+      setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+      setLinkingId(null);
+      setManualUrl('');
+      setActionSuccess('Counterpart URL linked successfully!');
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err) {
+      setError(err.message || 'Could not link counterpart URL');
+    } finally {
+      setMatchingId(null);
     }
   };
 
@@ -390,21 +436,52 @@ export default function App() {
               ) : (
                 <div className="products-list">
                   {products.map((item) => {
-                    const source = item.sources?.[0] || {};
+                    const sources = item.sources || [];
+                    const primarySource = sources[0] || {};
+                    const hasMultipleSources = sources.length > 1;
+
+                    // Identify counterpart platform if only 1 source exists
+                    const existingPlatforms = new Set(sources.map((s) => s.platform));
+                    const counterpartPlatform = existingPlatforms.has('AMAZON') ? 'FLIPKART' : 'AMAZON';
+                    const counterpartName = counterpartPlatform === 'FLIPKART' ? 'Flipkart' : 'Amazon';
+
+                    // Compute best deal across platforms
+                    let bestDeal = null;
+                    if (hasMultipleSources) {
+                      const validSources = sources.filter((s) => s.currentPrice && Number(s.currentPrice) > 0);
+                      if (validSources.length > 1) {
+                        const sorted = [...validSources].sort((a, b) => Number(a.currentPrice) - Number(b.currentPrice));
+                        const lowest = sorted[0];
+                        const highest = sorted[sorted.length - 1];
+                        const diff = Number(highest.currentPrice) - Number(lowest.currentPrice);
+                        if (diff > 0) {
+                          bestDeal = {
+                            platform: lowest.platform,
+                            savings: diff,
+                            url: lowest.url,
+                          };
+                        }
+                      }
+                    }
+
                     return (
                       <div key={item.id} className="product-card">
                         <div className="card-thumb-container">
-                          {source.imageUrl ? (
-                            <img src={source.imageUrl} alt={item.title} className="product-thumbnail" />
+                          {primarySource.imageUrl ? (
+                            <img src={primarySource.imageUrl} alt={item.title} className="product-thumbnail" />
                           ) : (
                             <div className="thumbnail-placeholder">📦</div>
                           )}
                         </div>
                         <div className="card-details">
                           <div className="card-top-row">
-                            <span className={`platform-pill ${source.platform?.toLowerCase() || 'other'}`}>
-                              {source.platform || 'OTHER'}
-                            </span>
+                            <div className="platform-badges-group">
+                              {sources.map((s) => (
+                                <span key={s.id || s.platform} className={`platform-pill ${s.platform?.toLowerCase() || 'other'}`}>
+                                  {s.platform || 'OTHER'}
+                                </span>
+                              ))}
+                            </div>
                             <div className="card-actions-group">
                               <button
                                 title={expandedProductId === item.id ? "Hide price history" : "View price history chart & analytics"}
@@ -442,16 +519,111 @@ export default function App() {
                             </div>
                           </div>
                           <h3 className="card-title" title={item.title}>{item.title}</h3>
-                          <div className="card-price-row">
-                            <span className="current-price">
-                              ₹{source.currentPrice ? Number(source.currentPrice).toLocaleString('en-IN') : '—'}
-                            </span>
-                            {item.targetPrice && (
-                              <span className="target-price-label">
-                                Target: ₹{Number(item.targetPrice).toLocaleString('en-IN')}
+
+                          {/* Best Deal Highlight Banner */}
+                          {bestDeal && (
+                            <div className="best-deal-banner">
+                              <span className="trophy-icon">🏆</span>
+                              <span>Best Deal on <strong>{bestDeal.platform}</strong> — Save ₹{bestDeal.savings.toLocaleString('en-IN')}!</span>
+                            </div>
+                          )}
+
+                          {/* Cross-Platform Comparison or Single Price */}
+                          {hasMultipleSources ? (
+                            <div className="cross-platform-sources-row">
+                              {sources.map((s) => {
+                                const isLowest = bestDeal && s.platform === bestDeal.platform;
+                                return (
+                                  <a
+                                    key={s.id || s.platform}
+                                    href={s.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`source-chip ${s.platform?.toLowerCase()} ${isLowest ? 'is-best' : ''}`}
+                                    title={`Open product page on ${s.platform}`}
+                                  >
+                                    <span className="chip-plat">{s.platform}</span>
+                                    <span className="chip-price">₹{s.currentPrice ? Number(s.currentPrice).toLocaleString('en-IN') : '—'}</span>
+                                    {isLowest && <span className="chip-best-pill">BEST</span>}
+                                    <span className="chip-arrow">↗</span>
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="card-price-row">
+                              <span className="current-price">
+                                ₹{primarySource.currentPrice ? Number(primarySource.currentPrice).toLocaleString('en-IN') : '—'}
                               </span>
-                            )}
-                          </div>
+                              {item.targetPrice && (
+                                <span className="target-price-label">
+                                  Target: ₹{Number(item.targetPrice).toLocaleString('en-IN')}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {item.targetPrice && hasMultipleSources && (
+                            <div className="card-target-row">
+                              <span className="target-price-label">
+                                🎯 Target Alert: ₹{Number(item.targetPrice).toLocaleString('en-IN')} (Any store)
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Counterpart Auto-Match Action Bar (shown when only 1 store is linked) */}
+                          {!hasMultipleSources && (
+                            <div className="counterpart-container">
+                              <div className="counterpart-actions-row">
+                                <button
+                                  type="button"
+                                  className="auto-match-btn"
+                                  disabled={matchingId === item.id}
+                                  onClick={() => handleAutoMatch(item.id)}
+                                  title={`Auto-discover and link counterpart on ${counterpartName}`}
+                                >
+                                  {matchingId === item.id ? (
+                                    <>
+                                      <span className="mini-spinner"></span>
+                                      <span>Finding on {counterpartName}...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="zap-icon">⚡</span>
+                                      <span>Auto-Match on {counterpartName}</span>
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="manual-link-toggle-btn"
+                                  onClick={() => {
+                                    setLinkingId((prev) => (prev === item.id ? null : item.id));
+                                    setManualUrl('');
+                                  }}
+                                  title="Paste counterpart URL manually"
+                                >
+                                  {linkingId === item.id ? '✕' : '+ Paste URL'}
+                                </button>
+                              </div>
+
+                              {linkingId === item.id && (
+                                <form className="manual-link-form" onSubmit={(e) => handleManualLink(e, item.id)}>
+                                  <input
+                                    type="url"
+                                    className="manual-link-input"
+                                    placeholder={`Paste ${counterpartName} URL...`}
+                                    value={manualUrl}
+                                    onChange={(e) => setManualUrl(e.target.value)}
+                                    required
+                                  />
+                                  <button type="submit" className="manual-link-submit-btn" disabled={matchingId === item.id}>
+                                    {matchingId === item.id ? '...' : 'Link'}
+                                  </button>
+                                </form>
+                              )}
+                            </div>
+                          )}
                         </div>
                         {expandedProductId === item.id && (
                           <PriceHistoryChart

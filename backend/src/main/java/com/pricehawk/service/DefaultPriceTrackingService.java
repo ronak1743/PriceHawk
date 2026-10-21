@@ -84,7 +84,14 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
 
         return priceHistoryRepository.findByItemSourceTrackedItemIdOrderByRecordedAtAsc(trackedItemId)
                 .stream()
-                .map(h -> new PriceHistoryResponse(h.getId(), h.getPrice(), h.getInStock(), h.getRecordedAt()))
+                .map(h -> new PriceHistoryResponse(
+                        h.getId(),
+                        h.getPrice(),
+                        h.getInStock(),
+                        h.getRecordedAt(),
+                        h.getItemSource() != null ? h.getItemSource().getPlatform() : null,
+                        h.getItemSource() != null ? h.getItemSource().getId() : null
+                ))
                 .collect(Collectors.toList());
     }
 

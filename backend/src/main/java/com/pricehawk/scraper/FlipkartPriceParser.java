@@ -13,7 +13,11 @@ import java.util.regex.Pattern;
 @Component
 public class FlipkartPriceParser implements PriceParser {
 
-    private static final Pattern PRICE_PATTERN = Pattern.compile("([0-9]+(?:,[0-9]+)*(?:\\.[0-9]{1,2})?)");
+    private static final Pattern CURRENCY_PRICE_PATTERN =
+            Pattern.compile("(?:₹|Rs\\.?|INR)\\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)");
+
+    private static final Pattern GENERIC_PRICE_PATTERN =
+            Pattern.compile("^\\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)\\s*$");
 
     @Override
     public boolean supports(Platform platform) {
@@ -44,7 +48,11 @@ public class FlipkartPriceParser implements PriceParser {
         for (String selector : titleSelectors) {
             Element el = doc.selectFirst(selector);
             if (el != null && !el.text().isBlank()) {
-                return el.text().trim();
+                String title = el.text().trim();
+                if (title.toLowerCase().endsWith("...more")) {
+                    title = title.substring(0, title.length() - "...more".length()).trim();
+                }
+                return title;
             }
         }
 
@@ -55,35 +63,117 @@ public class FlipkartPriceParser implements PriceParser {
         return doc.title().trim();
     }
 
+    private static final Pattern PPD_PATTERN =
+            Pattern.compile("\"ppd\"\\s*:\\s*\\{[^}]*\"(?:finalPrice|fsp)\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
+
+    private static final Pattern LP_PATTERN =
+            Pattern.compile("(?:\\\\\"|\")lp(?:\\\\\"|\")\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
+
+    private static final Pattern DESC_PATTERN =
+            Pattern.compile("\"price_description_1\".*?\"label_2\".*?\"text\"\\s*:\\s*\"(?:\\\\u20b9|₹)?([0-9,]+)\"");
+
     private BigDecimal extractPrice(Document doc) {
+        // 1. Desktop & standard server-rendered selectors
         String[] selectors = {
                 "div.Nx9bqj.CxhGGd",
                 "div._30jeq3._16Jk6d",
+                "div.hl05eU div.Nx9bqj",
+                "div._25b18c div.Nx9bqj",
                 "div.Nx9bqj",
                 "div._30jeq3",
-                "div._16Jk6d"
+                "div._16Jk6d",
+                "div.hZ3P6w",
+                "div[class*='Nx9bqj']",
+                "div[class*='30jeq3']"
         };
 
         for (String selector : selectors) {
             Element el = doc.selectFirst(selector);
             if (el != null && !el.text().isBlank()) {
                 BigDecimal parsed = parsePriceString(el.text());
-                if (parsed != null) {
+                if (parsed != null && parsed.compareTo(BigDecimal.ZERO) > 0) {
                     return parsed;
                 }
             }
         }
+
+        // 2. Modern React-Native-Web embedded JSON state (Flipkart PDP ppd / nepContext / price_description)
+        String html = doc.html();
+
+        Matcher ppdMatcher = PPD_PATTERN.matcher(html);
+        if (ppdMatcher.find()) {
+            BigDecimal parsed = parsePriceString(ppdMatcher.group(1));
+            if (parsed != null && parsed.compareTo(BigDecimal.ZERO) > 0) {
+                return parsed;
+            }
+        }
+
+        Matcher lpMatcher = LP_PATTERN.matcher(html);
+        if (lpMatcher.find()) {
+            BigDecimal parsed = parsePriceString(lpMatcher.group(1));
+            if (parsed != null && parsed.compareTo(BigDecimal.ZERO) > 0) {
+                return parsed;
+            }
+        }
+
+        Matcher descMatcher = DESC_PATTERN.matcher(html);
+        if (descMatcher.find()) {
+            BigDecimal parsed = parsePriceString(descMatcher.group(1));
+            if (parsed != null && parsed.compareTo(BigDecimal.ZERO) > 0) {
+                return parsed;
+            }
+        }
+
+        // 3. Fallback: inspect clean standalone ₹ element, strictly excluding links to other products (ads / carousels)
+        for (Element el : doc.select("div, span")) {
+            // Strictly exclude any element inside a link to another product (recommendation card or ad carousel)
+            boolean isInsideOtherProductLink = el.parents().stream().anyMatch(p ->
+                    p.tagName().equalsIgnoreCase("a") && (p.attr("href").contains("/p/") || p.attr("href").contains("pid=")));
+            if (isInsideOtherProductLink) {
+                continue;
+            }
+
+            // Exclude common recommendation / ad containers
+            boolean isInsideRecoContainer = el.parents().stream().anyMatch(p -> {
+                String cls = p.className().toLowerCase();
+                return cls.contains("reco") || cls.contains("similar") || cls.contains("carousel") || cls.contains("pmu");
+            });
+            if (isInsideRecoContainer) {
+                continue;
+            }
+
+            if (el.children().isEmpty() && el.text().trim().matches("₹\\s*[0-9,]+(?:\\.[0-9]+)?")) {
+                BigDecimal parsed = parsePriceString(el.text());
+                if (parsed != null && parsed.compareTo(BigDecimal.ZERO) > 0) {
+                    return parsed;
+                }
+            }
+        }
+
         return null;
     }
 
     private BigDecimal parsePriceString(String text) {
-        Matcher matcher = PRICE_PATTERN.matcher(text.replace("\u00a0", " ").trim());
-        if (matcher.find()) {
-            String clean = matcher.group(1).replace(",", "");
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String cleanText = text.replace("\u00a0", " ").trim();
+        Matcher currencyMatcher = CURRENCY_PRICE_PATTERN.matcher(cleanText);
+        if (currencyMatcher.find()) {
+            String clean = currencyMatcher.group(1).replace(",", "");
             try {
                 return new BigDecimal(clean);
             } catch (NumberFormatException ignored) {}
         }
+
+        Matcher genericMatcher = GENERIC_PRICE_PATTERN.matcher(cleanText);
+        if (genericMatcher.find()) {
+            String clean = genericMatcher.group(1).replace(",", "");
+            try {
+                return new BigDecimal(clean);
+            } catch (NumberFormatException ignored) {}
+        }
+
         return null;
     }
 

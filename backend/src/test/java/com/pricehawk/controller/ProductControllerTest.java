@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pricehawk.dto.RegisterRequest;
 import com.pricehawk.dto.TrackProductRequest;
 import com.pricehawk.model.User;
+import com.pricehawk.model.TrackedItem;
+import com.pricehawk.model.ItemSource;
+import com.pricehawk.model.PriceHistory;
+import com.pricehawk.model.PriceAlert;
 import com.pricehawk.repository.ItemSourceRepository;
 import com.pricehawk.repository.TrackedItemRepository;
 import com.pricehawk.repository.UserRepository;
@@ -216,13 +220,13 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /products/{id} with valid token deletes item and returns 204 No Content")
+    @DisplayName("DELETE /products/{id} with valid token deletes item, its history, and alerts, returning 204 No Content")
     void deleteProduct_withValidToken_returns204() throws Exception {
         TrackProductRequest req = new TrackProductRequest(
                 "https://www.amazon.in/dp/B08L5WHJ2V",
                 "Product to delete",
                 new BigDecimal("1000.00"),
-                null,
+                new BigDecimal("900.00"),
                 "INR",
                 null
         );
@@ -234,12 +238,22 @@ class ProductControllerTest {
                 .andReturn();
 
         long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+        TrackedItem item = trackedItemRepository.findById(productId).orElseThrow();
+        ItemSource source = itemSourceRepository.findAll().stream()
+                .filter(s -> s.getTrackedItem().getId().equals(productId))
+                .findFirst().orElseThrow();
+
+        // Simulate recorded price history & triggered price alerts for this product
+        priceHistoryRepository.save(new com.pricehawk.model.PriceHistory(source, new BigDecimal("950.00"), true));
+        priceAlertRepository.save(new com.pricehawk.model.PriceAlert(item, user1, new BigDecimal("1000.00"), new BigDecimal("900.00"), item.getTargetPrice()));
 
         mockMvc.perform(delete("/products/" + productId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1))
                 .andExpect(status().isNoContent());
 
         assertThat(trackedItemRepository.findById(productId)).isEmpty();
+        assertThat(priceHistoryRepository.findByItemSourceTrackedItemIdOrderByRecordedAtAsc(productId)).isEmpty();
+        assertThat(priceAlertRepository.findByUserIdOrderByCreatedAtDesc(user1.getId())).isEmpty();
     }
 
     @Test

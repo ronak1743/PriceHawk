@@ -43,6 +43,12 @@ class ProductServiceTest {
     private ItemSourceRepository itemSourceRepository;
 
     @Mock
+    private com.pricehawk.repository.PriceHistoryRepository priceHistoryRepository;
+
+    @Mock
+    private com.pricehawk.repository.PriceAlertRepository priceAlertRepository;
+
+    @Mock
     private com.pricehawk.scraper.PriceScraperService priceScraperService;
 
     @Mock
@@ -61,6 +67,8 @@ class ProductServiceTest {
                 userRepository,
                 trackedItemRepository,
                 itemSourceRepository,
+                priceHistoryRepository,
+                priceAlertRepository,
                 priceScraperService,
                 priceTrackingService,
                 crossPlatformSearchService
@@ -206,6 +214,8 @@ class ProductServiceTest {
 
         productService.deleteTrackedProduct(1L, 42L);
 
+        verify(priceAlertRepository).deleteByTrackedItemId(42L);
+        verify(priceHistoryRepository).deleteByItemSourceTrackedItemId(42L);
         verify(trackedItemRepository).delete(item);
     }
 

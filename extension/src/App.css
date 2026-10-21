@@ -903,3 +903,217 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
+
+/* Cross-Platform Comparison & Matching Styles */
+.platform-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.best-deal-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(5, 150, 105, 0.08));
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: #34d399;
+  font-size: 0.68rem;
+  font-weight: 500;
+  margin: 2px 0 4px;
+  animation: fadeIn 0.25s ease;
+}
+
+.best-deal-banner strong {
+  color: #6ee7b7;
+  font-weight: 700;
+}
+
+.trophy-icon {
+  font-size: 0.8rem;
+}
+
+.cross-platform-sources-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.source-chip.amazon {
+  background: rgba(255, 153, 0, 0.12);
+  border: 1px solid rgba(255, 153, 0, 0.3);
+  color: #fbbf24;
+}
+
+.source-chip.flipkart {
+  background: rgba(40, 116, 240, 0.12);
+  border: 1px solid rgba(40, 116, 240, 0.3);
+  color: #60a5fa;
+}
+
+.source-chip.is-best {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.source-chip:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+
+.chip-plat {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.chip-price {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.chip-best-pill {
+  background: #10b981;
+  color: #022c22;
+  font-size: 0.55rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+.chip-arrow {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.card-target-row {
+  margin-top: 2px;
+}
+
+.card-target-row .target-price-label {
+  font-size: 0.68rem;
+  color: #34d399;
+}
+
+.counterpart-container {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.counterpart-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auto-match-btn {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(139, 92, 246, 0.28));
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  color: #c4b5fd;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.auto-match-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.38), rgba(139, 92, 246, 0.45));
+  border-color: rgba(167, 139, 250, 0.7);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.auto-match-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.zap-icon {
+  font-size: 0.75rem;
+  color: #fbbf24;
+}
+
+.manual-link-toggle-btn {
+  background: transparent;
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  padding: 4px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.manual-link-toggle-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(148, 163, 184, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.manual-link-form {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  animation: fadeIn 0.2s ease;
+}
+
+.manual-link-input {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.68rem;
+  padding: 4px 8px;
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.manual-link-input:focus {
+  border-color: #818cf8;
+}
+
+.manual-link-submit-btn {
+  background: var(--accent-gradient);
+  border: none;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.manual-link-submit-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
