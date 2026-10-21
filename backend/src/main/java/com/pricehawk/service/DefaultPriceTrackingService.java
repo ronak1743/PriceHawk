@@ -11,6 +11,8 @@ import com.pricehawk.repository.ItemSourceRepository;
 import com.pricehawk.repository.PriceAlertRepository;
 import com.pricehawk.repository.PriceHistoryRepository;
 import com.pricehawk.repository.TrackedItemRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DefaultPriceTrackingService implements PriceTrackingService {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultPriceTrackingService.class);
 
     private final TrackedItemRepository trackedItemRepository;
     private final ItemSourceRepository itemSourceRepository;
@@ -91,21 +95,25 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
             item.setPreviousPrice(newPrice);
 
             if (shouldAlert) {
-                PriceAlert alert = new PriceAlert(item, item.getUser(), oldPrice, newPrice, targetPrice);
-                priceAlertRepository.save(alert);
+                try {
+                    PriceAlert alert = new PriceAlert(item, item.getUser(), oldPrice, newPrice, targetPrice);
+                    priceAlertRepository.save(alert);
 
-                // Update last notified price to avoid redundant emails on stagnant prices
-                item.setLastNotifiedPrice(newPrice);
+                    // Update last notified price to avoid redundant emails on stagnant prices
+                    item.setLastNotifiedPrice(newPrice);
 
-                // Send email alert via Resend
-                if (item.getUser() != null && item.getUser().getEmail() != null) {
-                    emailService.sendPriceDropAlert(
-                            item.getUser().getEmail(),
-                            item.getTitle(),
-                            oldPrice,
-                            newPrice,
-                            source.getUrl()
-                    );
+                    // Send email alert via Resend
+                    if (item.getUser() != null && item.getUser().getEmail() != null) {
+                        emailService.sendPriceDropAlert(
+                                item.getUser().getEmail(),
+                                item.getTitle(),
+                                oldPrice,
+                                newPrice,
+                                source.getUrl()
+                        );
+                    }
+                } catch (Exception alertEx) {
+                    log.error("Failed to persist or dispatch price drop alert: {}", alertEx.getMessage(), alertEx);
                 }
             }
 

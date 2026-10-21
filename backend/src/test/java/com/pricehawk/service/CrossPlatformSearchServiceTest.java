@@ -95,4 +95,44 @@ class CrossPlatformSearchServiceTest {
 
         assertThat(result).isNull();
     }
+
+    @Test
+    @DisplayName("When Amazon search contains sponsored ads without links, skips them and matches organic candidate")
+    void findCounterpart_fromFlipkartToAmazon_skipsSponsoredAdsAndMatchesOrganicCandidate() {
+        String multiCardHtml = """
+                <html>
+                <body>
+                  <!-- Card 1: Sponsored banner without direct dp link -->
+                  <div data-component-type="s-search-result">
+                    <span class="puis-sponsored-label-text">Sponsored</span>
+                    <h2><span>Dyazo Brand Banner</span></h2>
+                    <span class="a-price"><span class="a-offscreen">₹349.00</span></span>
+                  </div>
+                  <!-- Card 2: Competitor sponsored card -->
+                  <div data-component-type="s-search-result">
+                    <span class="puis-sponsored-label-text">Sponsored</span>
+                    <h2><a class="a-link-normal" href="/Portronics-Mouse/dp/B000PORT"><span>Portronics Wireless Mouse</span></a></h2>
+                    <span class="a-price"><span class="a-offscreen">₹598.00</span></span>
+                  </div>
+                  <!-- Card 3: Organic exact Dyazo match -->
+                  <div data-component-type="s-search-result">
+                    <h2><a class="a-link-normal" href="/Dyazo-Wireless-Mouse/dp/B0F21TC3MB"><span>Dyazo Transparent Wireless Mouse 2.4GHz</span></a></h2>
+                    <span class="a-price"><span class="a-offscreen">₹349.00</span></span>
+                    <img class="s-image" src="https://m.media-amazon.com/dyazo.jpg" />
+                  </div>
+                </body>
+                </html>
+                """;
+
+        when(restOperations.getForObject(anyString(), eq(String.class))).thenReturn(multiCardHtml);
+
+        ScrapedProduct result = searchService.findCounterpartProduct(Platform.FLIPKART, "dyazo Wireless Optical Mouse 2.4GHz (Black)");
+
+        assertThat(result).isNotNull();
+        assertThat(result.getPlatform()).isEqualTo(Platform.AMAZON);
+        assertThat(result.getTitle()).contains("Dyazo Transparent Wireless Mouse");
+        assertThat(result.getPrice()).isEqualByComparingTo(new BigDecimal("349.00"));
+        assertThat(result.getUrl()).contains("dp/B0F21TC3MB");
+        assertThat(result.getImageUrl()).isEqualTo("https://m.media-amazon.com/dyazo.jpg");
+    }
 }

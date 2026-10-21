@@ -14,6 +14,7 @@ import com.pricehawk.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,27 +59,61 @@ public class DefaultProductService implements ProductService {
 
         Platform platform = Platform.fromUrl(request.getUrl());
 
+        BigDecimal resolvedPrice = request.getCurrentPrice();
+        String resolvedTitle = request.getTitle();
+        String resolvedImage = request.getImageUrl();
+
+        // If client sent a placeholder or fallback price (<= 1.0) or generic title, scrape the live page on backend
+        if (resolvedPrice == null || resolvedPrice.compareTo(BigDecimal.ONE) <= 0) {
+            try {
+                com.pricehawk.scraper.ScrapedProduct scraped = priceScraperService.scrapeProduct(request.getUrl());
+                if (scraped != null && scraped.getPrice() != null && scraped.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+                    resolvedPrice = scraped.getPrice();
+                    if (resolvedTitle == null || resolvedTitle.isBlank() || "Tracked Product".equalsIgnoreCase(resolvedTitle)) {
+                        resolvedTitle = scraped.getTitle();
+                    }
+                    if (resolvedImage == null || resolvedImage.isBlank()) {
+                        resolvedImage = scraped.getImageUrl();
+                    }
+                    log.info("Live scraped original price {} during trackProduct for URL: {}", resolvedPrice, request.getUrl());
+                }
+            } catch (Exception e) {
+                log.warn("Could not scrape live price during trackProduct: {}", e.getMessage());
+            }
+        }
+
+        if (resolvedPrice == null || resolvedPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            resolvedPrice = BigDecimal.ONE;
+        }
+
         TrackedItem trackedItem = new TrackedItem(
                 user,
-                request.getTitle(),
+                resolvedTitle != null ? resolvedTitle : request.getTitle(),
                 request.getTargetPrice(),
                 request.getNotifyOnAnyDrop()
         );
-        trackedItem.setPreviousPrice(request.getCurrentPrice());
+        trackedItem.setPreviousPrice(resolvedPrice);
 
         ItemSource source = new ItemSource(
                 trackedItem,
                 platform,
                 request.getUrl(),
-                request.getCurrentPrice(),
-                request.getCurrentPrice(),
+                resolvedPrice,
+                resolvedPrice,
                 request.getCurrency(),
-                request.getImageUrl()
+                resolvedImage
         );
 
         trackedItem.addSource(source);
 
         TrackedItem savedItem = trackedItemRepository.save(trackedItem);
+
+        // Record initial price history snapshot so price history chart is populated immediately
+        try {
+            priceHistoryRepository.save(new com.pricehawk.model.PriceHistory(source, resolvedPrice, true));
+        } catch (Exception e) {
+            log.warn("Could not save initial price history during trackProduct: {}", e.getMessage());
+        }
 
         return mapToResponse(savedItem);
     }
@@ -112,24 +147,31 @@ public class DefaultProductService implements ProductService {
         TrackedItem item = trackedItemRepository.findByIdAndUserId(productId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
 
-        if (item.getSources() != null) {
-            for (ItemSource source : item.getSources()) {
+        if (item.getSources() != null && !item.getSources().isEmpty()) {
+            List<ItemSource> sourcesCopy = new ArrayList<>(item.getSources());
+            for (ItemSource source : sourcesCopy) {
                 if (source.getUrl() != null && !source.getUrl().isBlank()) {
                     try {
                         com.pricehawk.scraper.ScrapedProduct scraped = priceScraperService.scrapeProduct(source.getUrl());
                         if (scraped != null && scraped.getPrice() != null) {
                             priceTrackingService.recordPriceUpdate(source, scraped.getPrice(), scraped.isInStock());
                             log.info("Refreshed price for item {} ({}) to {}", item.getId(), source.getPlatform(), scraped.getPrice());
+                        } else {
+                            source.setLastCheckedAt(java.time.LocalDateTime.now());
+                            itemSourceRepository.save(source);
                         }
                     } catch (Exception e) {
                         log.warn("Failed to refresh price for item {} ({}) via URL: {} - {}",
                                 item.getId(), source.getPlatform(), source.getUrl(), e.getMessage());
+                        source.setLastCheckedAt(java.time.LocalDateTime.now());
+                        itemSourceRepository.save(source);
                     }
                 }
             }
         }
 
-        return mapToResponse(item);
+        TrackedItem refreshed = trackedItemRepository.findByIdAndUserId(productId, userId).orElse(item);
+        return mapToResponse(refreshed);
     }
 
     @Override

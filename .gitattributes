@@ -1,0 +1,3 @@
+# Exclude test fixtures and mock HTML page dumps from GitHub language statistics
+backend/src/test/resources/** linguist-vendored
+backend/src/test/resources/fixtures/*.html linguist-vendored

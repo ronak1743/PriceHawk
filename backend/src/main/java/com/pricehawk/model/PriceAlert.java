@@ -20,7 +20,7 @@ public class PriceAlert {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(precision = 12, scale = 2)
     private BigDecimal oldPrice;
 
     @Column(nullable = false, precision = 12, scale = 2)
@@ -39,7 +39,7 @@ public class PriceAlert {
     public PriceAlert(TrackedItem trackedItem, User user, BigDecimal oldPrice, BigDecimal newPrice, BigDecimal targetPrice) {
         this.trackedItem = trackedItem;
         this.user = user;
-        this.oldPrice = oldPrice;
+        this.oldPrice = oldPrice != null ? oldPrice : newPrice;
         this.newPrice = newPrice;
         this.targetPrice = targetPrice;
         this.isRead = false;
