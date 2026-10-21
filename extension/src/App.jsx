@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, setAuth as saveAuth, clearAuth } from './services/storage';
 import { login, register, getProducts, deleteProduct, getAlerts, markAlertRead, trackProduct, refreshProduct } from './services/api';
+import PriceHistoryChart from './components/PriceHistoryChart';
 import './App.css';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
   const [alerts, setAlerts] = useState([]);
   const [fetchingData, setFetchingData] = useState(false);
   const [refreshingId, setRefreshingId] = useState(null);
+  const [expandedProductId, setExpandedProductId] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
 
   useEffect(() => {
@@ -405,6 +407,17 @@ export default function App() {
                             </span>
                             <div className="card-actions-group">
                               <button
+                                title={expandedProductId === item.id ? "Hide price history" : "View price history chart & analytics"}
+                                className={`action-icon-btn chart-toggle-btn ${expandedProductId === item.id ? 'active' : ''}`}
+                                onClick={() => setExpandedProductId((prev) => (prev === item.id ? null : item.id))}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                              </button>
+                              <button
                                 title="Refresh live price"
                                 className={`action-icon-btn refresh-btn ${refreshingId === item.id ? 'spinning' : ''}`}
                                 onClick={() => handleRefreshProduct(item.id)}
@@ -440,6 +453,15 @@ export default function App() {
                             )}
                           </div>
                         </div>
+                        {expandedProductId === item.id && (
+                          <PriceHistoryChart
+                            token={auth.token}
+                            product={item}
+                            onTargetPriceUpdated={(updated) => {
+                              setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                            }}
+                          />
+                        )}
                       </div>
                     );
                   })}

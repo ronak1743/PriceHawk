@@ -110,3 +110,29 @@ export async function refreshProduct(token, id) {
   }
   return response.json();
 }
+
+export async function getProductHistory(token, id) {
+  const response = await fetch(`${API_BASE}/products/${id}/history`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error('Failed to fetch price history');
+  return response.json();
+}
+
+export async function updateTargetPrice(token, id, targetPrice) {
+  const response = await fetch(`${API_BASE}/products/${id}/target-price`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ targetPrice }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to update target price');
+  }
+  return response.json();
+}

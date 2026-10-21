@@ -236,4 +236,108 @@ describe('App - Tracker Dashboard UI', () => {
       expect(screen.getByText(/₹62,000/i)).toBeInTheDocument();
     });
   });
+
+  it('toggles price history chart and displays statistics', async () => {
+    const mockHistory = [
+      { id: 1, price: 72000.00, inStock: true, recordedAt: '2026-10-18T10:00:00' },
+      { id: 2, price: 69999.00, inStock: true, recordedAt: '2026-10-20T10:00:00' },
+    ];
+
+    globalThis.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/products/101/history')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockHistory,
+        });
+      }
+      if (url.includes('/products')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockProducts,
+        });
+      }
+      if (url.includes('/alerts')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [],
+        });
+      }
+      return Promise.reject(new Error('Unknown URL: ' + url));
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Apple iPhone 15/i)).toBeInTheDocument();
+    });
+
+    const chartToggleBtn = screen.getByTitle(/View price history chart & analytics/i);
+    fireEvent.click(chartToggleBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/All-Time Low/i)).toBeInTheDocument();
+      expect(screen.getByText(/All-Time High/i)).toBeInTheDocument();
+    });
+  });
+
+  it('updates target price from the chart panel', async () => {
+    const updatedWithTarget = {
+      ...mockProducts[0],
+      targetPrice: 63000.00,
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/products/101/target-price') && opts?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => updatedWithTarget,
+        });
+      }
+      if (url.includes('/products/101/history')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [],
+        });
+      }
+      if (url.includes('/products')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockProducts,
+        });
+      }
+      if (url.includes('/alerts')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [],
+        });
+      }
+      return Promise.reject(new Error('Unknown URL: ' + url));
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Apple iPhone 15/i)).toBeInTheDocument();
+    });
+
+    const chartToggleBtn = screen.getByTitle(/View price history chart & analytics/i);
+    fireEvent.click(chartToggleBtn);
+
+    const targetInput = await screen.findByRole('spinbutton');
+    fireEvent.change(targetInput, { target: { value: '63000' } });
+
+    const setBtn = screen.getByRole('button', { name: /^Set$/i });
+    fireEvent.click(setBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Target: ₹63,000/i)).toBeInTheDocument();
+    });
+  });
 });

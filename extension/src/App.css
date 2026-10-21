@@ -609,6 +609,7 @@ body {
 
 .product-card {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   background: rgba(15, 23, 42, 0.6);
@@ -616,6 +617,10 @@ body {
   border-radius: 10px;
   padding: 10px;
   transition: all 0.2s ease;
+}
+
+.product-card > .history-chart-card {
+  width: 100%;
 }
 
 .product-card:hover {
@@ -707,6 +712,12 @@ body {
 .action-icon-btn.refresh-btn.spinning svg {
   animation: spin 0.7s linear infinite;
   color: #818cf8;
+}
+
+.action-icon-btn.chart-toggle-btn:hover,
+.action-icon-btn.chart-toggle-btn.active {
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.2);
 }
 
 .action-icon-btn.delete-btn:hover {
