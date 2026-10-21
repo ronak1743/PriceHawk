@@ -141,22 +141,126 @@ export default function App() {
     try {
       if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab?.url) {
-          const isAmazon = tab.url.includes('amazon.');
-          const isFlipkart = tab.url.includes('flipkart.');
-          if (!isAmazon && !isFlipkart) {
-            setError('Please open an Amazon or Flipkart product page to track.');
-            return;
-          }
-          const item = await trackProduct(auth.token, {
-            url: tab.url,
-            title: tab.title?.replace(/ : (Amazon|Flipkart).*$/i, '') || 'Tracked Product',
-            currentPrice: 1.0, // Baseline fallback if scraped by backend
-          });
-          setProducts((prev) => [item, ...prev]);
-          setActionSuccess('Product tracked successfully!');
-          setTimeout(() => setActionSuccess(null), 3000);
+        if (!tab?.url) {
+          setError('No active tab found.');
+          return;
         }
+
+        const isAmazon = tab.url.includes('amazon.');
+        const isFlipkart = tab.url.includes('flipkart.');
+        if (!isAmazon && !isFlipkart) {
+          setError('Please open an Amazon or Flipkart product page to track.');
+          return;
+        }
+
+        // 1. Try communicating with content script
+        let details = null;
+        try {
+          const resp = await chrome.tabs.sendMessage(tab.id, { type: 'PRICEHAWK_GET_DETAILS' });
+          if (resp?.details) {
+            details = resp.details;
+          }
+        } catch (msgErr) {
+          // Content script may not be loaded yet or tab was open before extension installed
+        }
+
+        // 2. Fallback: Extract directly via chrome.scripting.executeScript
+        if ((!details || !details.currentPrice) && chrome.scripting?.executeScript) {
+          try {
+            const results = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: () => {
+                const url = window.location.href;
+                const isAmz = url.includes('amazon.');
+                let title = document.title.replace(/ : (Amazon|Flipkart).*$/i, '').trim();
+                let price = null;
+                let imageUrl = '';
+
+                if (isAmz) {
+                  const tEl = document.querySelector('#productTitle') || document.querySelector('#title');
+                  if (tEl) title = tEl.textContent.trim();
+
+                  const pSelectors = [
+                    '#corePriceDisplay_desktop_feature_div .a-offscreen',
+                    '#corePriceDisplay_desktop_feature_div .a-price .a-offscreen',
+                    '.priceToPay .a-offscreen',
+                    '.a-price .a-offscreen',
+                    '.a-price.a-offscreen',
+                    '#priceblock_ourprice',
+                    '#priceblock_dealprice',
+                    '.a-price.aok-align-center .a-offscreen',
+                  ];
+                  for (const s of pSelectors) {
+                    const el = document.querySelector(s);
+                    if (el && el.textContent) {
+                      const clean = el.textContent.replace(/[^0-9.]/g, '');
+                      const val = parseFloat(clean);
+                      if (!isNaN(val)) { price = val; break; }
+                    }
+                  }
+
+                  const imgSelectors = ['#landingImage', '#imgBlkFront', '#main-image', '#imgTagWrapperId img', '#imageBlock img'];
+                  for (const s of imgSelectors) {
+                    const el = document.querySelector(s);
+                    if (!el) continue;
+                    const dyn = el.getAttribute('data-a-dynamic-image');
+                    if (dyn) {
+                      try {
+                        const keys = Object.keys(JSON.parse(dyn));
+                        if (keys.length > 0 && keys[0].startsWith('http')) { imageUrl = keys[0]; break; }
+                      } catch {}
+                    }
+                    const hires = el.getAttribute('data-old-hires');
+                    if (hires && hires.startsWith('http')) { imageUrl = hires; break; }
+                    const src = el.getAttribute('src') || el.src;
+                    if (src && src.startsWith('http') && !src.includes('transparent-pixel')) { imageUrl = src; break; }
+                  }
+                } else {
+                  const tEl = document.querySelector('span.VU-ZEz') || document.querySelector('span.B_NuCI') || document.querySelector('h1');
+                  if (tEl) title = tEl.textContent.trim();
+
+                  const pSelectors = ['div.Nx9bqj.CxhGGd', 'div._30jeq3._16Jk6d', 'div.Nx9bqj'];
+                  for (const s of pSelectors) {
+                    const el = document.querySelector(s);
+                    if (el && el.textContent) {
+                      const clean = el.textContent.replace(/[^0-9.]/g, '');
+                      const val = parseFloat(clean);
+                      if (!isNaN(val)) { price = val; break; }
+                    }
+                  }
+
+                  const imgEl = document.querySelector('img.DByuf4, img._396cs4._2amPTt, img._396cs4, img[src*="rukminim"]');
+                  if (imgEl) {
+                    const src = imgEl.getAttribute('src') || imgEl.src;
+                    if (src && src.startsWith('http')) imageUrl = src;
+                  }
+                }
+
+                return { title, currentPrice: price, imageUrl };
+              },
+            });
+
+            if (results?.[0]?.result) {
+              details = results[0].result;
+            }
+          } catch (scriptErr) {
+            console.warn('Script execution fallback failed', scriptErr);
+          }
+        }
+
+        const title = details?.title || tab.title?.replace(/ : (Amazon|Flipkart).*$/i, '') || 'Tracked Product';
+        const currentPrice = details?.currentPrice || 1.0;
+        const imageUrl = details?.imageUrl || '';
+
+        const item = await trackProduct(auth.token, {
+          url: tab.url,
+          title,
+          currentPrice,
+          imageUrl,
+        });
+        setProducts((prev) => [item, ...prev]);
+        setActionSuccess('Product tracked successfully!');
+        setTimeout(() => setActionSuccess(null), 3000);
       }
     } catch (err) {
       setError(err.message || 'Failed to track current page');

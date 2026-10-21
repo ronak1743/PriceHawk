@@ -98,4 +98,15 @@ import './content.css';
       trackBtn.innerHTML = '<span>Track Price</span>';
     }
   });
+
+  // Listen for queries from the extension popup
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request?.type === 'PRICEHAWK_GET_DETAILS') {
+        const freshDetails = extractProductDetails(window.location.href);
+        sendResponse({ success: true, details: freshDetails });
+      }
+      return true;
+    });
+  }
 })();

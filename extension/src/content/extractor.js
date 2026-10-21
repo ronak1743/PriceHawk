@@ -78,9 +78,49 @@ function extractAmazonDetails(url) {
     }
   }
 
-  // Image
-  const imgEl = document.querySelector('#landingImage') || document.querySelector('#imgBlkFront') || document.querySelector('#main-image');
-  const imageUrl = imgEl ? (imgEl.getAttribute('src') || imgEl.getAttribute('data-old-hires')) : null;
+  // Image - Support data-a-dynamic-image, data-old-hires, and multiple selectors
+  const imgSelectors = [
+    '#landingImage',
+    '#imgBlkFront',
+    '#main-image',
+    '#imgTagWrapperId img',
+    '#imageBlock img',
+    '#main-image-container img',
+    'img[data-a-dynamic-image]',
+  ];
+
+  let imageUrl = '';
+  for (const sel of imgSelectors) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+
+    // Check data-a-dynamic-image (JSON map containing full-res image URLs as keys)
+    const dynamic = el.getAttribute('data-a-dynamic-image');
+    if (dynamic) {
+      try {
+        const parsed = JSON.parse(dynamic);
+        const keys = Object.keys(parsed);
+        if (keys.length > 0 && keys[0].startsWith('http')) {
+          imageUrl = keys[0];
+          break;
+        }
+      } catch {}
+    }
+
+    // Check data-old-hires
+    const hires = el.getAttribute('data-old-hires');
+    if (hires && hires.startsWith('http')) {
+      imageUrl = hires;
+      break;
+    }
+
+    // Check src (ignore data: URIs or 1x1 transparent placeholders)
+    const src = el.getAttribute('src') || el.src;
+    if (src && src.startsWith('http') && !src.includes('transparent-pixel') && !src.includes('grey-pixel')) {
+      imageUrl = src;
+      break;
+    }
+  }
 
   return {
     title: title || 'Amazon Product',
@@ -115,8 +155,26 @@ function extractFlipkartDetails(url) {
   }
 
   // Image
-  const imgEl = document.querySelector('img.DByuf4') || document.querySelector('img._396cs4._2amPTt') || document.querySelector('img._396cs4');
-  const imageUrl = imgEl ? (imgEl.getAttribute('src') || '') : '';
+  const imgSelectors = [
+    'img.DByuf4',
+    'img._396cs4._2amPTt',
+    'img._396cs4',
+    'img._53G40d',
+    'img[src*="rukminim"]',
+    'div._1kogOf img',
+    'div._2rQ-NK img',
+  ];
+
+  let imageUrl = '';
+  for (const sel of imgSelectors) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const src = el.getAttribute('src') || el.src || el.getAttribute('data-src');
+    if (src && src.startsWith('http')) {
+      imageUrl = src;
+      break;
+    }
+  }
 
   return {
     title: title || 'Flipkart Product',
