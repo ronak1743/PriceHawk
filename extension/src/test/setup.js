@@ -41,6 +41,13 @@ globalThis.chrome = {
       }),
     },
   },
+  tabs: {
+    query: vi.fn((queryInfo, callback) => {
+      const tabs = [{ id: 1, url: 'https://www.amazon.in/dp/B08L5WHJ2V', title: 'Apple iPhone 15' }];
+      if (callback) callback(tabs);
+      return Promise.resolve(tabs);
+    }),
+  },
 };
 
 // Reset storage before each test
