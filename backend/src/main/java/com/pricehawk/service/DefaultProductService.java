@@ -108,6 +108,17 @@ public class DefaultProductService implements ProductService {
         return mapToResponse(item);
     }
 
+    @Override
+    @Transactional
+    public TrackedItemResponse updateTargetPrice(Long userId, Long productId, java.math.BigDecimal targetPrice) {
+        TrackedItem item = trackedItemRepository.findByIdAndUserId(productId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
+
+        item.setTargetPrice(targetPrice);
+        TrackedItem saved = trackedItemRepository.save(item);
+        return mapToResponse(saved);
+    }
+
     private TrackedItemResponse mapToResponse(TrackedItem item) {
         List<ItemSourceResponse> sourceResponses = item.getSources() != null
                 ? item.getSources().stream().map(this::mapSourceToResponse).collect(Collectors.toList())

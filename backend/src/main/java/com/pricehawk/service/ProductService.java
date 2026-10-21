@@ -14,4 +14,6 @@ public interface ProductService {
     void deleteTrackedProduct(Long userId, Long productId);
 
     TrackedItemResponse refreshProductPrice(Long userId, Long productId);
+
+    TrackedItemResponse updateTargetPrice(Long userId, Long productId, java.math.BigDecimal targetPrice);
 }

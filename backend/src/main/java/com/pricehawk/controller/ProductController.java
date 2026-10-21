@@ -63,4 +63,13 @@ public class ProductController {
         TrackedItemResponse response = productService.refreshProductPrice(principal.getId(), id);
         return ResponseEntity.ok(response);
     }
+
+    @PatchMapping("/{id}/target-price")
+    public ResponseEntity<TrackedItemResponse> updateTargetPrice(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.pricehawk.dto.UpdateTargetPriceRequest request) {
+        TrackedItemResponse response = productService.updateTargetPrice(principal.getId(), id, request.getTargetPrice());
+        return ResponseEntity.ok(response);
+    }
 }
