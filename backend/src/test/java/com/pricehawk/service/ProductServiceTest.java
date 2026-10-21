@@ -236,4 +236,20 @@ class ProductServiceTest {
         verify(priceScraperService).scrapeProduct("https://www.amazon.in/dp/B08L5WHJ2V");
         verify(priceTrackingService).recordPriceUpdate(eq(source), eq(new BigDecimal("52000.00")), eq(true));
     }
+
+    @Test
+    @DisplayName("updateTargetPrice - updates target price on item and saves")
+    void updateTargetPrice_success() {
+        TrackedItem item = new TrackedItem(testUser, "Laptop", new BigDecimal("50000.00"));
+        item.setId(10L);
+
+        when(trackedItemRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(item));
+        when(trackedItemRepository.save(item)).thenReturn(item);
+
+        TrackedItemResponse response = productService.updateTargetPrice(1L, 10L, new BigDecimal("45000.00"));
+
+        assertThat(response).isNotNull();
+        assertThat(item.getTargetPrice()).isEqualByComparingTo(new BigDecimal("45000.00"));
+        verify(trackedItemRepository).save(item);
+    }
 }

@@ -311,4 +311,94 @@ class ProductControllerTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("PATCH /products/{id}/target-price with valid token updates target price and returns 200 OK")
+    void updateTargetPrice_withValidToken_returns200() throws Exception {
+        TrackProductRequest req = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "Laptop",
+                new BigDecimal("50000.00"),
+                new BigDecimal("48000.00"),
+                "INR",
+                null
+        );
+        MvcResult res = mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+
+        com.pricehawk.dto.UpdateTargetPriceRequest updateReq =
+                new com.pricehawk.dto.UpdateTargetPriceRequest(new BigDecimal("45000.00"));
+
+        mockMvc.perform(patch("/products/" + productId + "/target-price")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(productId))
+                .andExpect(jsonPath("$.targetPrice").value(45000.00));
+
+        assertThat(trackedItemRepository.findById(productId).get().getTargetPrice())
+                .isEqualByComparingTo(new BigDecimal("45000.00"));
+    }
+
+    @Test
+    @DisplayName("PATCH /products/{id}/target-price without token returns 401 Unauthorized")
+    void updateTargetPrice_withoutToken_returns401() throws Exception {
+        com.pricehawk.dto.UpdateTargetPriceRequest updateReq =
+                new com.pricehawk.dto.UpdateTargetPriceRequest(new BigDecimal("45000.00"));
+
+        mockMvc.perform(patch("/products/1/target-price")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("PATCH /products/{id}/target-price with negative price returns 400 Bad Request")
+    void updateTargetPrice_negativePrice_returns400() throws Exception {
+        com.pricehawk.dto.UpdateTargetPriceRequest updateReq =
+                new com.pricehawk.dto.UpdateTargetPriceRequest(new BigDecimal("-100.00"));
+
+        mockMvc.perform(patch("/products/1/target-price")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("PATCH /products/{id}/target-price for another user's item returns 404 Not Found")
+    void updateTargetPrice_ownedByAnotherUser_returns404() throws Exception {
+        TrackProductRequest req = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "Laptop",
+                new BigDecimal("50000.00"),
+                null,
+                "INR",
+                null
+        );
+        MvcResult res = mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+
+        com.pricehawk.dto.UpdateTargetPriceRequest updateReq =
+                new com.pricehawk.dto.UpdateTargetPriceRequest(new BigDecimal("40000.00"));
+
+        mockMvc.perform(patch("/products/" + productId + "/target-price")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token2)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isNotFound());
+    }
 }
