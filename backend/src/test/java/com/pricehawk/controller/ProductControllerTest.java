@@ -19,9 +19,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import org.springframework.boot.test.mock.mockito.MockBean;
+import com.pricehawk.scraper.PriceScraperService;
+import com.pricehawk.scraper.ScrapedProduct;
+import com.pricehawk.model.Platform;
+
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,6 +53,9 @@ class ProductControllerTest {
 
     @Autowired
     private JwtService jwtService;
+
+    @MockBean
+    private PriceScraperService priceScraperService;
 
     private User user1;
     private User user2;
@@ -247,5 +256,51 @@ class ProductControllerTest {
 
         // Ensure item was not deleted
         assertThat(trackedItemRepository.findById(productId)).isPresent();
+    }
+
+    @Test
+    @DisplayName("POST /products/{id}/refresh with valid token refreshes price and returns 200 OK")
+    void refreshProduct_withValidToken_returns200() throws Exception {
+        String url = "https://www.amazon.in/dp/B08L5WHJ2V";
+        TrackProductRequest req = new TrackProductRequest(
+                url,
+                "iPhone 12",
+                new BigDecimal("60000.00"),
+                null,
+                "INR",
+                null
+        );
+        MvcResult res = mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+
+        when(priceScraperService.scrapeProduct(url))
+                .thenReturn(new ScrapedProduct("iPhone 12", new BigDecimal("54999.00"), "INR", "https://img.jpg", true, Platform.AMAZON));
+
+        mockMvc.perform(post("/products/" + productId + "/refresh")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(productId))
+                .andExpect(jsonPath("$.sources[0].currentPrice").value(54999.00));
+    }
+
+    @Test
+    @DisplayName("POST /products/{id}/refresh without token returns 401 Unauthorized")
+    void refreshProduct_withoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/products/1/refresh"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /products/{id}/refresh for non-existent product returns 404 Not Found")
+    void refreshProduct_nonExistent_returns404() throws Exception {
+        mockMvc.perform(post("/products/99999/refresh")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1))
+                .andExpect(status().isNotFound());
     }
 }
