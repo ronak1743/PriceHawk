@@ -27,6 +27,8 @@ import com.pricehawk.model.Platform;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -62,6 +64,9 @@ class ProductControllerTest {
 
     @MockBean
     private PriceScraperService priceScraperService;
+
+    @MockBean
+    private com.pricehawk.service.CrossPlatformSearchService crossPlatformSearchService;
 
     private User user1;
     private User user2;
@@ -400,5 +405,87 @@ class ProductControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updateReq)))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /products/{id}/sources with manual Flipkart URL adds second source and returns 201 Created")
+    void addSource_manualUrl_returns201WithMultipleSources() throws Exception {
+        TrackProductRequest trackReq = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "Apple iPhone 12",
+                new BigDecimal("50000.00"),
+                null,
+                "INR",
+                "https://img.amazon.com/iphone.jpg"
+        );
+        MvcResult res = mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(trackReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+
+        com.pricehawk.dto.AddProductSourceRequest addReq = new com.pricehawk.dto.AddProductSourceRequest(
+                "https://www.flipkart.com/apple-iphone-12/p/itm123?pid=IPHONE12",
+                new BigDecimal("48999.00"),
+                "https://img.flipkart.com/iphone.jpg",
+                false
+        );
+
+        mockMvc.perform(post("/products/" + productId + "/sources")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(productId))
+                .andExpect(jsonPath("$.sources.length()").value(2))
+                .andExpect(jsonPath("$.sources[0].platform").value("AMAZON"))
+                .andExpect(jsonPath("$.sources[1].platform").value("FLIPKART"))
+                .andExpect(jsonPath("$.sources[1].currentPrice").value(48999.00));
+    }
+
+    @Test
+    @DisplayName("POST /products/{id}/sources with autoDiscover=true finds counterpart on other platform and returns 201 Created")
+    void addSource_autoDiscover_returns201WithAutoDiscoveredCounterpart() throws Exception {
+        TrackProductRequest trackReq = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "Apple iPhone 12",
+                new BigDecimal("50000.00"),
+                null,
+                "INR",
+                null
+        );
+        MvcResult res = mockMvc.perform(post("/products/track")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(trackReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
+
+        when(crossPlatformSearchService.findCounterpartProduct(eq(Platform.AMAZON), anyString()))
+                .thenReturn(new ScrapedProduct(
+                        "Apple iPhone 12 (Black, 64 GB)",
+                        new BigDecimal("47990.00"),
+                        "INR",
+                        "https://img.flipkart.com/iphone.jpg",
+                        true,
+                        Platform.FLIPKART
+                ));
+
+        com.pricehawk.dto.AddProductSourceRequest addReq = new com.pricehawk.dto.AddProductSourceRequest();
+        addReq.setAutoDiscover(true);
+
+        mockMvc.perform(post("/products/" + productId + "/sources")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sources.length()").value(2))
+                .andExpect(jsonPath("$.sources[1].platform").value("FLIPKART"))
+                .andExpect(jsonPath("$.sources[1].currentPrice").value(47990.00));
     }
 }

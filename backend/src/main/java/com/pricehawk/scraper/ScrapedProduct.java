@@ -11,18 +11,32 @@ public class ScrapedProduct {
     private BigDecimal price;
     private String currency;
     private String imageUrl;
+    private String url;
     private boolean inStock;
     private Platform platform;
 
     public ScrapedProduct() {}
 
     public ScrapedProduct(String title, BigDecimal price, String currency, String imageUrl, boolean inStock, Platform platform) {
+        this(title, price, currency, imageUrl, null, inStock, platform);
+    }
+
+    public ScrapedProduct(String title, BigDecimal price, String currency, String imageUrl, String url, boolean inStock, Platform platform) {
         this.title = title;
         this.price = price;
         this.currency = (currency == null || currency.isBlank()) ? "INR" : currency;
         this.imageUrl = imageUrl;
+        this.url = url;
         this.inStock = inStock;
         this.platform = platform;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
     }
 
     public String getTitle() {
