@@ -80,9 +80,9 @@ body {
   width: 500px;
   min-width: 500px;
   max-width: 500px;
-  height: 800px;
-  min-height: 800px;
-  max-height: 800px;
+  height: 600px;
+  min-height: 600px;
+  max-height: 600px;
   margin: 0;
   padding: 0;
   background-color: var(--bg-base);
@@ -91,15 +91,18 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #root {
-  width: 100%;
-  height: 100%;
+  width: 500px;
+  height: 600px;
   min-height: 600px;
   max-height: 600px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* Minimalist Dark Scrollbars */
@@ -131,14 +134,13 @@ body {
   height: 600px;
   min-height: 600px;
   max-height: 600px;
-  margin: 0 auto;
+  margin: 0;
   background: radial-gradient(120% 60% at 50% -10%, rgba(37, 99, 235, 0.1) 0%, transparent 60%), var(--bg-base);
-  border: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.85);
+  overscroll-behavior: none;
 }
 
 /* ==========================================================================
@@ -473,6 +475,8 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 0 18px 48px;
   /* 48px bottom padding guarantees target price is never cut off */
 }
