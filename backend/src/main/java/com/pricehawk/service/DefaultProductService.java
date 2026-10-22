@@ -151,24 +151,39 @@ public class DefaultProductService implements ProductService {
             List<ItemSource> sourcesCopy = new ArrayList<>(item.getSources());
             for (ItemSource source : sourcesCopy) {
                 if (source.getUrl() != null && !source.getUrl().isBlank()) {
+                    boolean updatedSuccessfully = false;
                     try {
                         com.pricehawk.scraper.ScrapedProduct scraped = priceScraperService.scrapeProduct(source.getUrl());
-                        if (scraped != null && scraped.getPrice() != null) {
+                        if (scraped != null && scraped.getPrice() != null && scraped.getPrice().compareTo(BigDecimal.ZERO) > 0) {
                             priceTrackingService.recordPriceUpdate(source, scraped.getPrice(), scraped.isInStock());
                             log.info("Refreshed price for item {} ({}) to {}", item.getId(), source.getPlatform(), scraped.getPrice());
+                            updatedSuccessfully = true;
+                        }
+                    } catch (Exception e) {
+                        log.warn("Live scrape attempt failed for item {} ({}) via URL: {} - {}",
+                                item.getId(), source.getPlatform(), source.getUrl(), e.getMessage());
+                    }
+
+                    // If live scrape failed or returned empty price (e.g. anti-bot 503 or transient network failure),
+                    // record a snapshot using the source's last verified price so BOTH Amazon and Flipkart data points
+                    // stay synchronized in price history on every refresh!
+                    if (!updatedSuccessfully) {
+                        BigDecimal fallbackPrice = source.getCurrentPrice() != null ? source.getCurrentPrice() : source.getOriginalPrice();
+                        if (fallbackPrice != null && fallbackPrice.compareTo(BigDecimal.ZERO) > 0) {
+                            priceTrackingService.recordPriceUpdate(source, fallbackPrice, source.isInStock());
+                            log.info("Recorded synchronized fallback snapshot with existing price {} for {} on item {}",
+                                    fallbackPrice, source.getPlatform(), item.getId());
                         } else {
                             source.setLastCheckedAt(java.time.LocalDateTime.now());
                             itemSourceRepository.save(source);
                         }
-                    } catch (Exception e) {
-                        log.warn("Failed to refresh price for item {} ({}) via URL: {} - {}",
-                                item.getId(), source.getPlatform(), source.getUrl(), e.getMessage());
-                        source.setLastCheckedAt(java.time.LocalDateTime.now());
-                        itemSourceRepository.save(source);
                     }
                 }
             }
         }
+
+        item.setUpdatedAt(java.time.LocalDateTime.now());
+        trackedItemRepository.save(item);
 
         TrackedItem refreshed = trackedItemRepository.findByIdAndUserId(productId, userId).orElse(item);
         return mapToResponse(refreshed);
@@ -238,7 +253,14 @@ public class DefaultProductService implements ProductService {
                         counterpart.getImageUrl()
                 );
                 item.addSource(source);
+                ItemSource savedSource = itemSourceRepository.save(source);
                 trackedItemRepository.save(item);
+
+                try {
+                    priceHistoryRepository.save(new com.pricehawk.model.PriceHistory(savedSource, counterpart.getPrice(), true));
+                } catch (Exception e) {
+                    log.warn("Could not save initial price history for counterpart {}: {}", counterpart.getPlatform(), e.getMessage());
+                }
             }
         } else if (request.getUrl() != null && !request.getUrl().isBlank()) {
             Platform platform = Platform.fromUrl(request.getUrl());
@@ -252,7 +274,14 @@ public class DefaultProductService implements ProductService {
                     request.getImageUrl()
             );
             item.addSource(source);
+            ItemSource savedSource = itemSourceRepository.save(source);
             trackedItemRepository.save(item);
+
+            try {
+                priceHistoryRepository.save(new com.pricehawk.model.PriceHistory(savedSource, request.getCurrentPrice(), true));
+            } catch (Exception e) {
+                log.warn("Could not save initial price history for source {}: {}", platform, e.getMessage());
+            }
         }
 
         return mapToResponse(item);

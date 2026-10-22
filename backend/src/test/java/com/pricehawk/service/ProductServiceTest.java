@@ -252,6 +252,32 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("refreshProductPrice - updates both Amazon and Flipkart sources simultaneously even if one encounters a scraping error")
+    void refreshProductPrice_bothSourcesUpdatedEvenIfOneFailsScrape() {
+        TrackedItem item = new TrackedItem(testUser, "Laptop", new BigDecimal("50000.00"));
+        item.setId(10L);
+        ItemSource amazonSource = new ItemSource(item, Platform.AMAZON, "https://www.amazon.in/dp/B08L5WHJ2V", new BigDecimal("55000.00"), new BigDecimal("55000.00"), "INR", null);
+        ItemSource flipkartSource = new ItemSource(item, Platform.FLIPKART, "https://www.flipkart.com/laptop", new BigDecimal("54000.00"), new BigDecimal("54000.00"), "INR", null);
+        item.addSource(amazonSource);
+        item.addSource(flipkartSource);
+
+        when(trackedItemRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(item));
+        when(priceScraperService.scrapeProduct("https://www.amazon.in/dp/B08L5WHJ2V"))
+                .thenReturn(new com.pricehawk.scraper.ScrapedProduct("Laptop", new BigDecimal("53000.00"), "INR", "https://img.jpg", true, Platform.AMAZON));
+        // Simulate Flipkart blocking or failing with 503
+        when(priceScraperService.scrapeProduct("https://www.flipkart.com/laptop"))
+                .thenThrow(new RuntimeException("503 Service Unavailable"));
+
+        TrackedItemResponse response = productService.refreshProductPrice(1L, 10L);
+
+        assertThat(response).isNotNull();
+        // Amazon gets new scraped price
+        verify(priceTrackingService).recordPriceUpdate(eq(amazonSource), eq(new BigDecimal("53000.00")), eq(true));
+        // Flipkart gets synchronized snapshot with fallback existing price
+        verify(priceTrackingService).recordPriceUpdate(eq(flipkartSource), eq(new BigDecimal("54000.00")), eq(true));
+    }
+
+    @Test
     @DisplayName("updateTargetPrice - updates target price on item and saves")
     void updateTargetPrice_success() {
         TrackedItem item = new TrackedItem(testUser, "Laptop", new BigDecimal("50000.00"));

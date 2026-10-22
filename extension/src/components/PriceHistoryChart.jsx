@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getProductHistory, updateAlertSettings } from '../services/api';
 import './PriceHistoryChart.css';
 
-export default function PriceHistoryChart({ token, product, onTargetPriceUpdated }) {
+export default function PriceHistoryChart({ token, product, onTargetPriceUpdated, refreshTrigger }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [targetInput, setTargetInput] = useState(product.targetPrice != null ? product.targetPrice : '');
@@ -17,7 +17,7 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
     setNotifyAnyDrop(product.notifyOnAnyDrop ?? true);
   }, [product.targetPrice, product.notifyOnAnyDrop]);
 
-  useEffect(() => {
+  const fetchHistory = React.useCallback(() => {
     let isMounted = true;
     setLoading(true);
     getProductHistory(token, product.id)
@@ -38,6 +38,10 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
       isMounted = false;
     };
   }, [token, product.id]);
+
+  useEffect(() => {
+    return fetchHistory();
+  }, [fetchHistory, product.updatedAt, refreshTrigger]);
 
   const handleSaveAlertSettings = async (e) => {
     if (e) e.preventDefault();
@@ -159,33 +163,50 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
 
   return (
     <div className="history-chart-card">
-      {/* Platform Graph Tabs (shown when multiple stores are tracked) */}
-      {availablePlatforms.length > 1 && (
-        <div className="chart-platform-tabs" role="tablist">
-          {availablePlatforms.map((plat) => {
-            const platSource = product.sources?.find((s) => s.platform === plat);
-            const isActive = activePlatform === plat;
-            return (
-              <button
-                key={plat}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={`chart-plat-tab ${plat.toLowerCase()} ${isActive ? 'active' : ''}`}
-                onClick={() => setSelectedPlatform(plat)}
-              >
-                <span className="plat-tab-dot">●</span>
-                <span className="plat-tab-name">{plat}</span>
-                {platSource?.currentPrice && (
-                  <span className="plat-tab-price">
-                    ₹{Number(platSource.currentPrice).toLocaleString('en-IN')}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Platform Graph Tabs & Refresh Button */}
+      <div className="chart-header-row">
+        {availablePlatforms.length > 1 ? (
+          <div className="chart-platform-tabs" role="tablist">
+            {availablePlatforms.map((plat) => {
+              const platSource = product.sources?.find((s) => s.platform === plat);
+              const isActive = activePlatform === plat;
+              return (
+                <button
+                  key={plat}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`chart-plat-tab ${plat.toLowerCase()} ${isActive ? 'active' : ''}`}
+                  onClick={() => setSelectedPlatform(plat)}
+                >
+                  <span className="plat-tab-dot">●</span>
+                  <span className="plat-tab-name">{plat}</span>
+                  {platSource?.currentPrice && (
+                    <span className="plat-tab-price">
+                      ₹{Number(platSource.currentPrice).toLocaleString('en-IN')}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="chart-single-title">
+            <span>Price Trend ({activePlatform})</span>
+          </div>
+        )}
+        <button
+          type="button"
+          className={`chart-reload-btn ${loading ? 'spinning' : ''}`}
+          onClick={fetchHistory}
+          title="Reload price graph"
+          aria-label="Reload price history"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
+      </div>
 
       {/* Analytics stats row for active platform */}
       <div className="chart-stats-grid">

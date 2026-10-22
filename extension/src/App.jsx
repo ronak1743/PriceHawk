@@ -55,6 +55,7 @@ export default function App() {
   const [manualUrl, setManualUrl] = useState('');
   const [expandedProductId, setExpandedProductId] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
+  const [chartRefreshTrigger, setChartRefreshTrigger] = useState(0);
 
   useEffect(() => {
     getAuth().then((stored) => {
@@ -167,6 +168,7 @@ export default function App() {
     try {
       const updated = await refreshProduct(auth.token, productId);
       setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+      setChartRefreshTrigger(Date.now());
       setActionSuccess('Price refreshed successfully!');
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err) {
@@ -186,6 +188,7 @@ export default function App() {
       const isNewSourceAdded = updated.sources && updated.sources.length > (current?.sources?.length || 0);
 
       setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+      setChartRefreshTrigger(Date.now());
 
       if (isNewSourceAdded) {
         setActionSuccess('Counterpart product auto-matched & linked!');
@@ -208,6 +211,7 @@ export default function App() {
     try {
       const updated = await addProductSource(auth.token, productId, { url: manualUrl.trim(), autoDiscover: false });
       setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+      setChartRefreshTrigger(Date.now());
       setLinkingId(null);
       setManualUrl('');
       setActionSuccess('Counterpart URL linked successfully!');
@@ -706,8 +710,10 @@ export default function App() {
                           <PriceHistoryChart
                             token={auth.token}
                             product={item}
+                            refreshTrigger={chartRefreshTrigger}
                             onTargetPriceUpdated={(updated) => {
                               setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                              setChartRefreshTrigger(Date.now());
                             }}
                           />
                         )}
