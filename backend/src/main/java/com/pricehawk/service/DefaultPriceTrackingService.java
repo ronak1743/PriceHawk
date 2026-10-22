@@ -141,10 +141,18 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<PriceAlertResponse> getUserAlerts(Long userId) {
+        LocalDateTime twoDaysAgo = LocalDateTime.now().minusDays(2);
+        try {
+            priceAlertRepository.deleteExpiredReadAlerts(twoDaysAgo);
+        } catch (Exception e) {
+            log.debug("Note during purging expired read alerts: {}", e.getMessage());
+        }
+
         return priceAlertRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
+                .filter(a -> !a.isRead() || a.getReadAt() == null || a.getReadAt().isAfter(twoDaysAgo))
                 .map(this::mapToAlertResponse)
                 .collect(Collectors.toList());
     }
@@ -156,7 +164,22 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Alert not found with id: " + alertId));
 
         alert.setRead(true);
+        alert.setReadAt(LocalDateTime.now());
         priceAlertRepository.save(alert);
+    }
+
+    @Override
+    @Transactional
+    public void purgeExpiredReadAlerts() {
+        LocalDateTime twoDaysAgo = LocalDateTime.now().minusDays(2);
+        try {
+            int deleted = priceAlertRepository.deleteExpiredReadAlerts(twoDaysAgo);
+            if (deleted > 0) {
+                log.info("Purged {} expired read alerts older than 2 days.", deleted);
+            }
+        } catch (Exception e) {
+            log.warn("Error purging expired read alerts: {}", e.getMessage());
+        }
     }
 
     private PriceAlertResponse mapToAlertResponse(PriceAlert alert) {
@@ -171,7 +194,8 @@ public class DefaultPriceTrackingService implements PriceTrackingService {
                 alert.getNewPrice(),
                 alert.getTargetPrice(),
                 alert.isRead(),
-                alert.getCreatedAt()
+                alert.getCreatedAt(),
+                alert.getReadAt()
         );
     }
 }

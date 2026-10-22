@@ -16,12 +16,19 @@ public class PriceAlertResponse {
     @JsonProperty("isRead")
     private boolean isRead;
     private LocalDateTime createdAt;
+    private LocalDateTime readAt;
 
     public PriceAlertResponse() {}
 
     public PriceAlertResponse(Long id, Long trackedItemId, String itemTitle, BigDecimal oldPrice,
                               BigDecimal newPrice, BigDecimal targetPrice, boolean isRead,
                               LocalDateTime createdAt) {
+        this(id, trackedItemId, itemTitle, oldPrice, newPrice, targetPrice, isRead, createdAt, null);
+    }
+
+    public PriceAlertResponse(Long id, Long trackedItemId, String itemTitle, BigDecimal oldPrice,
+                              BigDecimal newPrice, BigDecimal targetPrice, boolean isRead,
+                              LocalDateTime createdAt, LocalDateTime readAt) {
         this.id = id;
         this.trackedItemId = trackedItemId;
         this.itemTitle = itemTitle;
@@ -30,6 +37,7 @@ public class PriceAlertResponse {
         this.targetPrice = targetPrice;
         this.isRead = isRead;
         this.createdAt = createdAt;
+        this.readAt = readAt;
     }
 
     public Long getId() {
@@ -96,5 +104,13 @@ public class PriceAlertResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getReadAt() {
+        return readAt;
+    }
+
+    public void setReadAt(LocalDateTime readAt) {
+        this.readAt = readAt;
     }
 }

@@ -250,6 +250,40 @@ class PriceTrackingServiceTest {
         priceTrackingService.markAlertAsRead(1L, 50L);
 
         assertThat(alert.isRead()).isTrue();
+        assertThat(alert.getReadAt()).isNotNull();
         verify(priceAlertRepository).save(alert);
+    }
+
+    @Test
+    @DisplayName("getUserAlerts - purges and filters out read alerts older than 2 days")
+    void getUserAlerts_filtersOutReadAlertsOlderThan2Days() {
+        PriceAlert unreadAlert = new PriceAlert(testItem, testUser, new BigDecimal("70000.00"),
+                new BigDecimal("64000.00"), new BigDecimal("65000.00"));
+        unreadAlert.setId(51L);
+        unreadAlert.setCreatedAt(LocalDateTime.now().minusDays(5));
+        unreadAlert.setRead(false);
+
+        PriceAlert recentReadAlert = new PriceAlert(testItem, testUser, new BigDecimal("70000.00"),
+                new BigDecimal("64000.00"), new BigDecimal("65000.00"));
+        recentReadAlert.setId(52L);
+        recentReadAlert.setCreatedAt(LocalDateTime.now().minusDays(1));
+        recentReadAlert.setRead(true);
+        recentReadAlert.setReadAt(LocalDateTime.now().minusHours(12));
+
+        PriceAlert expiredReadAlert = new PriceAlert(testItem, testUser, new BigDecimal("70000.00"),
+                new BigDecimal("64000.00"), new BigDecimal("65000.00"));
+        expiredReadAlert.setId(53L);
+        expiredReadAlert.setCreatedAt(LocalDateTime.now().minusDays(4));
+        expiredReadAlert.setRead(true);
+        expiredReadAlert.setReadAt(LocalDateTime.now().minusDays(3));
+
+        when(priceAlertRepository.findByUserIdOrderByCreatedAtDesc(1L))
+                .thenReturn(List.of(unreadAlert, recentReadAlert, expiredReadAlert));
+
+        List<PriceAlertResponse> alerts = priceTrackingService.getUserAlerts(1L);
+
+        assertThat(alerts).hasSize(2);
+        assertThat(alerts.stream().map(PriceAlertResponse::getId)).containsExactly(51L, 52L);
+        verify(priceAlertRepository).deleteExpiredReadAlerts(any(LocalDateTime.class));
     }
 }

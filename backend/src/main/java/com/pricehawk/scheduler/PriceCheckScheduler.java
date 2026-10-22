@@ -68,6 +68,12 @@ public class PriceCheckScheduler {
                 log.warn("Failed to scrape price for URL: {} - reason: {}", exactUrl, e.getMessage());
             }
         }
+        
+        try {
+            priceTrackingService.purgeExpiredReadAlerts();
+        } catch (Exception e) {
+            log.warn("Failed to purge expired read alerts: {}", e.getMessage());
+        }
 
         log.info("Completed scheduled price check run.");
     }

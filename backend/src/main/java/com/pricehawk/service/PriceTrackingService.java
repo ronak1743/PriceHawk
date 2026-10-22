@@ -16,4 +16,6 @@ public interface PriceTrackingService {
     List<PriceAlertResponse> getUserAlerts(Long userId);
 
     void markAlertAsRead(Long userId, Long alertId);
+
+    void purgeExpiredReadAlerts();
 }

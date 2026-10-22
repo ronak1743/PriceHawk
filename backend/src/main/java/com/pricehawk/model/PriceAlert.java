@@ -34,6 +34,8 @@ public class PriceAlert {
 
     private LocalDateTime createdAt;
 
+    private LocalDateTime readAt;
+
     public PriceAlert() {}
 
     public PriceAlert(TrackedItem trackedItem, User user, BigDecimal oldPrice, BigDecimal newPrice, BigDecimal targetPrice) {
@@ -106,7 +108,12 @@ public class PriceAlert {
     }
 
     public void setRead(boolean read) {
-        isRead = read;
+        this.isRead = read;
+        if (read && this.readAt == null) {
+            this.readAt = LocalDateTime.now();
+        } else if (!read) {
+            this.readAt = null;
+        }
     }
 
     public LocalDateTime getCreatedAt() {
@@ -115,5 +122,13 @@ public class PriceAlert {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getReadAt() {
+        return readAt;
+    }
+
+    public void setReadAt(LocalDateTime readAt) {
+        this.readAt = readAt;
     }
 }

@@ -30,6 +30,8 @@ public class DatabaseSchemaInitializer implements CommandLineRunner {
             // Backfill any NULL notify_on_any_drop to true
             jdbcTemplate.execute("UPDATE tracked_items SET notify_on_any_drop = TRUE WHERE notify_on_any_drop IS NULL");
 
+            jdbcTemplate.execute("ALTER TABLE price_alerts ADD COLUMN IF NOT EXISTS read_at TIMESTAMP");
+
             log.info("Database schema safety checks completed successfully.");
         } catch (Exception e) {
             log.warn("Database schema initialization note: {}", e.getMessage());

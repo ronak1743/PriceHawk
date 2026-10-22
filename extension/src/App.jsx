@@ -4,6 +4,37 @@ import { login, register, getProducts, deleteProduct, getAlerts, markAlertRead, 
 import PriceHistoryChart from './components/PriceHistoryChart';
 import './App.css';
 
+function formatAlertTimestamp(isoDate) {
+  if (!isoDate) return '';
+  const date = new Date(isoDate);
+  if (isNaN(date.getTime())) return '';
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
+
+function formatFullDateTime(isoDate) {
+  if (!isoDate) return '';
+  const date = new Date(isoDate);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-IN', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default function App() {
   const [auth, setAuth] = useState(null);
   const [mode, setMode] = useState('login'); // 'login' | 'register'
@@ -193,7 +224,7 @@ export default function App() {
     try {
       await markAlertRead(auth.token, alertId);
       setAlerts((prev) =>
-        prev.map((a) => (a.id === alertId ? { ...a, isRead: true } : a))
+        prev.map((a) => (a.id === alertId ? { ...a, isRead: true, readAt: new Date().toISOString() } : a))
       );
     } catch (err) {
       setError(err.message || 'Failed to mark alert as read');
@@ -362,7 +393,15 @@ export default function App() {
     }
   };
 
-  const unreadAlertsCount = alerts.filter((a) => !a.isRead).length;
+  // Filter alerts: automatically remove read alerts older than 2 days (48 hours)
+  const activeAlerts = alerts.filter((alert) => {
+    if (!alert.isRead) return true;
+    const readTimestamp = alert.readAt ? new Date(alert.readAt).getTime() : (alert.createdAt ? new Date(alert.createdAt).getTime() : 0);
+    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+    return Date.now() - readTimestamp < twoDaysMs;
+  });
+
+  const unreadAlertsCount = activeAlerts.filter((a) => !a.isRead).length;
 
   return (
     <div className="popup-container">
@@ -449,7 +488,7 @@ export default function App() {
               {unreadAlertsCount > 0 ? (
                 <span className="tab-count-badge unread">{unreadAlertsCount}</span>
               ) : (
-                <span className="tab-count-badge">{alerts.length}</span>
+                <span className="tab-count-badge zero">0</span>
               )}
             </button>
           </div>
@@ -683,28 +722,46 @@ export default function App() {
           {/* Tab Content: Alerts */}
           {dashboardTab === 'alerts' && (
             <div className="alerts-tab-content">
-              {alerts.length === 0 ? (
+              {activeAlerts.length === 0 ? (
                 <div className="empty-state">
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                   </svg>
                   <p className="empty-title">No price drop alerts yet</p>
-                  <p className="empty-subtitle">When prices on your tracked items drop, you'll see alerts here and via Resend email.</p>
+                  <p className="empty-subtitle">When prices on your tracked items drop, you'll see alerts here and via Brevo email.</p>
                 </div>
               ) : (
                 <div className="alerts-list">
-                  {alerts.map((alert) => (
+                  {activeAlerts.map((alert) => (
                     <div key={alert.id} className={`alert-card ${alert.isRead ? 'read' : 'unread'}`}>
                       <div className="alert-card-header">
-                        <span className="alert-drop-badge">🚨 Price Drop</span>
-                        {!alert.isRead && (
+                        <div className="alert-header-left">
+                          <span className="alert-drop-badge">🚨 Price Drop</span>
+                          {alert.createdAt && (
+                            <span
+                              className="alert-timestamp"
+                              title={formatFullDateTime(alert.createdAt)}
+                            >
+                              🕒 {formatAlertTimestamp(alert.createdAt)}
+                            </span>
+                          )}
+                        </div>
+                        {!alert.isRead ? (
                           <button
                             className="mark-read-btn"
                             onClick={() => handleMarkAlertRead(alert.id)}
+                            title="Mark as read (will be auto-removed after 2 days)"
                           >
                             Mark as Read
                           </button>
+                        ) : (
+                          <span
+                            className="alert-read-pill"
+                            title="Read alerts are automatically removed after 2 days"
+                          >
+                            ✓ Read · Clears in 2d
+                          </span>
                         )}
                       </div>
                       <h4 className="alert-item-title">{alert.itemTitle}</h4>

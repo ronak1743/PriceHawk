@@ -176,14 +176,23 @@ describe('App - Tracker Dashboard UI', () => {
 
     render(<App />);
 
+    // Verify unread badge starts at 1
     const alertsTab = await screen.findByRole('button', { name: /Alerts/i });
+    expect(alertsTab).toHaveTextContent('1');
+
     fireEvent.click(alertsTab);
+
+    // Verify alert timestamp is visible
+    expect(screen.getByText(/🕒/i)).toBeInTheDocument();
 
     const markReadBtn = await screen.findByRole('button', { name: /Mark as Read/i });
     fireEvent.click(markReadBtn);
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /Mark as Read/i })).not.toBeInTheDocument();
+      expect(screen.getByText(/✓ Read · Clears in 2d/i)).toBeInTheDocument();
+      // Unread count updates to 0 on alertsTab
+      expect(alertsTab).toHaveTextContent('0');
     });
   });
 

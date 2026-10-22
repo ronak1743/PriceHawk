@@ -461,6 +461,11 @@ body {
   color: #ffffff;
 }
 
+.tab-count-badge.zero {
+  background: rgba(255, 255, 255, 0.07);
+  color: #64748b;
+}
+
 /* Dashboard Container & Content Area */
 .dashboard-container {
   display: flex;
@@ -915,6 +920,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+.alert-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .alert-drop-badge {
@@ -924,6 +937,29 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.alert-timestamp {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.alert-read-pill {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 2px 7px;
+  border-radius: 4px;
 }
 
 .mark-read-btn {

@@ -20,5 +20,9 @@ public interface PriceAlertRepository extends JpaRepository<PriceAlert, Long> {
     @Modifying
     @Query("DELETE FROM PriceAlert a WHERE a.trackedItem.id = :trackedItemId")
     void deleteByTrackedItemId(@Param("trackedItemId") Long trackedItemId);
+
+    @Modifying
+    @Query("DELETE FROM PriceAlert a WHERE a.isRead = true AND ((a.readAt IS NOT NULL AND a.readAt < :cutoff) OR (a.readAt IS NULL AND a.createdAt < :cutoff))")
+    int deleteExpiredReadAlerts(@Param("cutoff") java.time.LocalDateTime cutoff);
 }
 
