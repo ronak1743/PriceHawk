@@ -181,6 +181,9 @@ public class DefaultProductService implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
 
         item.setTargetPrice(targetPrice);
+        if (targetPrice == null) {
+            item.setNotifyOnAnyDrop(true);
+        }
         TrackedItem saved = trackedItemRepository.save(item);
         return mapToResponse(saved);
     }
@@ -191,11 +194,14 @@ public class DefaultProductService implements ProductService {
         TrackedItem item = trackedItemRepository.findByIdAndUserId(productId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tracked item not found with id: " + productId));
 
-        if (request.getTargetPrice() != null) {
-            item.setTargetPrice(request.getTargetPrice());
-        }
+        // Allow setting targetPrice to null to remove/clear the limit
+        item.setTargetPrice(request.getTargetPrice());
+
         if (request.getNotifyOnAnyDrop() != null) {
             item.setNotifyOnAnyDrop(request.getNotifyOnAnyDrop());
+        } else if (request.getTargetPrice() == null) {
+            // When removing target price without specifying notifyOnAnyDrop, default back to normal alert mode (true)
+            item.setNotifyOnAnyDrop(true);
         }
 
         TrackedItem saved = trackedItemRepository.save(item);
