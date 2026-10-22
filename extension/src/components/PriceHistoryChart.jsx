@@ -5,11 +5,17 @@ import './PriceHistoryChart.css';
 export default function PriceHistoryChart({ token, product, onTargetPriceUpdated }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [targetInput, setTargetInput] = useState(product.targetPrice || '');
+  const [targetInput, setTargetInput] = useState(product.targetPrice != null ? product.targetPrice : '');
   const [notifyAnyDrop, setNotifyAnyDrop] = useState(product.notifyOnAnyDrop ?? true);
   const [savingTarget, setSavingTarget] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState(null);
+
+  // Sync state if product prop updates (e.g., target price set or removed)
+  useEffect(() => {
+    setTargetInput(product.targetPrice != null ? product.targetPrice : '');
+    setNotifyAnyDrop(product.notifyOnAnyDrop ?? true);
+  }, [product.targetPrice, product.notifyOnAnyDrop]);
 
   useEffect(() => {
     let isMounted = true;
@@ -34,7 +40,7 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
   }, [token, product.id]);
 
   const handleSaveAlertSettings = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     let val = targetInput === '' ? null : parseFloat(targetInput);
     if (val !== null && (isNaN(val) || val < 0)) {
       setError('Please enter a valid target price or leave blank');
@@ -46,8 +52,11 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
     try {
       const updated = await updateAlertSettings(token, product.id, {
         targetPrice: val,
-        notifyOnAnyDrop: notifyAnyDrop,
+        notifyOnAnyDrop: val === null ? true : notifyAnyDrop,
       });
+      if (val === null) {
+        setNotifyAnyDrop(true);
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
       if (onTargetPriceUpdated) {
@@ -55,6 +64,28 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
       }
     } catch (err) {
       setError(err.message || 'Failed to update alert settings');
+    } finally {
+      setSavingTarget(false);
+    }
+  };
+
+  const handleRemoveTargetPrice = async () => {
+    setSavingTarget(true);
+    setError(null);
+    try {
+      const updated = await updateAlertSettings(token, product.id, {
+        targetPrice: null,
+        notifyOnAnyDrop: true,
+      });
+      setTargetInput('');
+      setNotifyAnyDrop(true);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+      if (onTargetPriceUpdated) {
+        onTargetPriceUpdated(updated);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to remove target price');
     } finally {
       setSavingTarget(false);
     }
@@ -264,6 +295,31 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
         )}
       </div>
 
+      {/* Alert Mode Banner */}
+      <div className={`alert-mode-card ${product.targetPrice != null ? 'limit-active' : 'normal-active'}`}>
+        <div className="mode-badge-col">
+          <span className={`mode-badge ${product.targetPrice != null ? 'limit' : 'normal'}`}>
+            {product.targetPrice != null ? '🎯 MIN LIMIT SET' : '⚡ NORMAL ALERT MODE'}
+          </span>
+          <span className="mode-summary">
+            {product.targetPrice != null
+              ? `Alerts when price reaches ₹${Number(product.targetPrice).toLocaleString('en-IN')} or below`
+              : 'Alerts automatically whenever price drops below previous price'}
+          </span>
+        </div>
+        {product.targetPrice != null && (
+          <button
+            type="button"
+            className="clear-limit-btn"
+            onClick={handleRemoveTargetPrice}
+            disabled={savingTarget}
+            title="Remove limit and switch to Normal Alert Mode"
+          >
+            ✕ Remove Limit
+          </button>
+        )}
+      </div>
+
       {/* Target Price & Smart Alert Configuration */}
       <form className="target-price-form" onSubmit={handleSaveAlertSettings}>
         <div className="target-input-row">
@@ -285,6 +341,17 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
           <button type="submit" className="save-target-btn" disabled={savingTarget}>
             {savingTarget ? '...' : saveSuccess ? '✓ Saved' : 'Set'}
           </button>
+          {product.targetPrice != null && (
+            <button
+              type="button"
+              className="cancel-limit-btn"
+              onClick={handleRemoveTargetPrice}
+              disabled={savingTarget}
+              title="Remove limit and switch to normal alert mode"
+            >
+              ✕ Clear
+            </button>
+          )}
         </div>
 
         <div className="alert-toggle-row">

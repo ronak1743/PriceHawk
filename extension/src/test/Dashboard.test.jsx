@@ -339,6 +339,32 @@ describe('App - Tracker Dashboard UI', () => {
     await waitFor(() => {
       expect(screen.getByText(/Target: ₹63,000/i)).toBeInTheDocument();
     });
+
+    // Test removing the target price limit to restore Normal Alert Mode
+    const updatedWithoutTarget = {
+      ...mockProducts[0],
+      targetPrice: null,
+      notifyOnAnyDrop: true,
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (url.includes('/products/101/alert-settings') && opts?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => updatedWithoutTarget,
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => [] });
+    });
+
+    const removeLimitBtn = screen.getByRole('button', { name: /Remove Limit/i });
+    fireEvent.click(removeLimitBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Target: ₹63,000/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/NORMAL ALERT MODE/i)).toBeInTheDocument();
+    });
   });
 
   it('auto-matches Flipkart counterpart and displays side-by-side pricing with best deal badge', async () => {
