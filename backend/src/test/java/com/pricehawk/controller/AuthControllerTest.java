@@ -36,12 +36,28 @@ class AuthControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private com.pricehawk.repository.PriceAlertRepository priceAlertRepository;
+
+    @Autowired
+    private com.pricehawk.repository.PriceHistoryRepository priceHistoryRepository;
+
+    @Autowired
+    private com.pricehawk.repository.ItemSourceRepository itemSourceRepository;
+
+    @Autowired
+    private com.pricehawk.repository.TrackedItemRepository trackedItemRepository;
+
+    @Autowired
     private com.pricehawk.security.JwtService jwtService;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @BeforeEach
     void setUp() {
+        priceAlertRepository.deleteAll();
+        priceHistoryRepository.deleteAll();
+        itemSourceRepository.deleteAll();
+        trackedItemRepository.deleteAll();
         userRepository.deleteAll();
     }
 

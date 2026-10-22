@@ -40,12 +40,28 @@ class SecurityIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private com.pricehawk.repository.PriceAlertRepository priceAlertRepository;
+
+    @Autowired
+    private com.pricehawk.repository.PriceHistoryRepository priceHistoryRepository;
+
+    @Autowired
+    private com.pricehawk.repository.ItemSourceRepository itemSourceRepository;
+
+    @Autowired
+    private com.pricehawk.repository.TrackedItemRepository trackedItemRepository;
+
+    @Autowired
     private JwtService jwtService;
 
     private final String testSecret = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
 
     @BeforeEach
     void setUp() {
+        priceAlertRepository.deleteAll();
+        priceHistoryRepository.deleteAll();
+        itemSourceRepository.deleteAll();
+        trackedItemRepository.deleteAll();
         userRepository.deleteAll();
     }
 
