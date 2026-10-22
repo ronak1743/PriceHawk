@@ -138,13 +138,33 @@ PriceHawk/
 
 ## 🚀 Getting Started
 
-### 1. Prerequisites
+### 📥 Quick Install: Add Extension to Chrome (No Coding Required)
+
+If you only want to use the **PriceHawk** Chrome extension on your browser:
+
+1. **Download the Extension**:
+   - Go to the **[Releases](https://github.com/ronak1743/PriceHawk/releases)** page.
+   - Under the latest release (e.g. `v1.0.0`), download **`PriceHawk-Extension-v1.0.0.zip`** from the **Assets** section.
+2. **Extract the ZIP**:
+   - Extract / unzip the downloaded ZIP file into a folder on your computer (e.g., `Documents/PriceHawk-Extension`).
+3. **Load into Google Chrome**:
+   - Open Chrome and type `chrome://extensions/` in the address bar.
+   - Turn **ON** the **Developer mode** toggle in the top-right corner.
+   - Click the **Load unpacked** button in the top-left corner.
+   - Select the unzipped folder containing `manifest.json`.
+4. **Start Tracking**:
+   - Click the puzzle piece (Extensions) icon 🧩 in Chrome's toolbar and **pin 📌 PriceHawk**.
+   - Open any product on **Amazon** or **Flipkart**, click the PriceHawk icon, and click **Track Current Tab Product**!
+
+---
+
+### 💻 Developer & Local Backend Setup
+
+#### 1. Prerequisites
 - **Java**: 21 LTS (or Java 17+)
 - **Maven**: 3.9+
 - **Node.js**: 18+ and npm
 - **Database**: PostgreSQL (or cloud Supabase instance)
-
----
 
 ### 2. Backend Setup & Run
 
