@@ -7,6 +7,7 @@
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2015-blue.svg)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![Tests Passing](https://img.shields.io/badge/Tests-106%20Backend%20%7C%2018%20Frontend%20Passed-success.svg)](#testing)
+[![CI Pipeline](https://github.com/ronak1743/PriceHawk/actions/workflows/ci.yml/badge.svg)](https://github.com/ronak1743/PriceHawk/actions/workflows/ci.yml)
 
 **PriceHawk** is a full-stack, automated e-commerce price tracking and alert ecosystem designed for **Amazon India** and **Flipkart**. It empowers shoppers to track product prices with a single click, view synchronized historical price charts, compare deals across competing stores side-by-side, and receive instantaneous drop alerts via in-app notifications and email.
 
