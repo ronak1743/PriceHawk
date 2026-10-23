@@ -235,7 +235,15 @@ public class DefaultProductService implements ProductService {
                     : Platform.AMAZON;
             Platform counterpartPlatform = currentPlatform == Platform.AMAZON ? Platform.FLIPKART : Platform.AMAZON;
 
-            com.pricehawk.scraper.ScrapedProduct counterpart = crossPlatformSearchService.findCounterpartProduct(currentPlatform, item.getTitle());
+            String currentUrl = item.getSources() != null && !item.getSources().isEmpty()
+                    ? item.getSources().get(0).getUrl()
+                    : null;
+            BigDecimal currentPrice = item.getSources() != null && !item.getSources().isEmpty()
+                    ? item.getSources().get(0).getCurrentPrice()
+                    : null;
+
+            com.pricehawk.scraper.ScrapedProduct counterpart = crossPlatformSearchService.findCounterpartProduct(
+                    currentPlatform, item.getTitle(), currentUrl, currentPrice);
             if (counterpart == null || counterpart.getUrl() == null) {
                 throw new ResourceNotFoundException("No matching counterpart found on " + counterpartPlatform + ". You can link it manually with '+ Paste URL'.");
             }
@@ -264,23 +272,60 @@ public class DefaultProductService implements ProductService {
             }
         } else if (request.getUrl() != null && !request.getUrl().isBlank()) {
             Platform platform = Platform.fromUrl(request.getUrl());
-            ItemSource source = new ItemSource(
-                    item,
-                    platform,
-                    request.getUrl(),
-                    request.getCurrentPrice(),
-                    request.getCurrentPrice(),
-                    "INR",
-                    request.getImageUrl()
-            );
-            item.addSource(source);
-            ItemSource savedSource = itemSourceRepository.save(source);
-            trackedItemRepository.save(item);
+            BigDecimal price = request.getCurrentPrice();
+            String imageUrl = request.getImageUrl();
 
-            try {
-                priceHistoryRepository.save(new com.pricehawk.model.PriceHistory(savedSource, request.getCurrentPrice(), true));
-            } catch (Exception e) {
-                log.warn("Could not save initial price history for source {}: {}", platform, e.getMessage());
+            if (price == null || imageUrl == null || imageUrl.isBlank()) {
+                try {
+                    com.pricehawk.scraper.ScrapedProduct scraped = priceScraperService.scrapeProduct(request.getUrl());
+                    if (scraped != null) {
+                        if (price == null) price = scraped.getPrice();
+                        if (imageUrl == null || imageUrl.isBlank()) imageUrl = scraped.getImageUrl();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to scrape counterpart URL {}: {}", request.getUrl(), e.getMessage());
+                }
+            }
+            if (price == null) {
+                price = BigDecimal.ZERO;
+            }
+
+            boolean alreadyLinked = item.getSources().stream()
+                    .anyMatch(s -> s.getPlatform() == platform);
+            if (!alreadyLinked) {
+                ItemSource source = new ItemSource(
+                        item,
+                        platform,
+                        request.getUrl(),
+                        price,
+                        price,
+                        "INR",
+                        imageUrl
+                );
+                item.addSource(source);
+                ItemSource savedSource = itemSourceRepository.save(source);
+                trackedItemRepository.save(item);
+
+                try {
+                    priceHistoryRepository.save(new com.pricehawk.model.PriceHistory(savedSource, price, true));
+                } catch (Exception e) {
+                    log.warn("Could not save initial price history for source {}: {}", platform, e.getMessage());
+                }
+            } else {
+                ItemSource existing = item.getSources().stream()
+                        .filter(s -> s.getPlatform() == platform)
+                        .findFirst().orElse(null);
+                if (existing != null) {
+                    existing.setUrl(request.getUrl());
+                    if (price.compareTo(BigDecimal.ZERO) > 0) {
+                        existing.setCurrentPrice(price);
+                    }
+                    if (imageUrl != null && !imageUrl.isBlank()) {
+                        existing.setImageUrl(imageUrl);
+                    }
+                    itemSourceRepository.save(existing);
+                    trackedItemRepository.save(item);
+                }
             }
         }
 

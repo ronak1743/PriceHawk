@@ -9,13 +9,16 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost:8080/*",
     "https://*.amazon.in/*",
+    "https://amazon.in/*",
     "https://*.amazon.com/*",
-    "https://*.flipkart.com/*"
+    "https://*.flipkart.com/*",
+    "https://flipkart.com/*"
   ],
   "content_scripts": [
     {

@@ -31,6 +31,7 @@ import com.pricehawk.model.Platform;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -555,7 +556,7 @@ class ProductControllerTest {
 
         long productId = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asLong();
 
-        when(crossPlatformSearchService.findCounterpartProduct(eq(Platform.AMAZON), anyString()))
+        when(crossPlatformSearchService.findCounterpartProduct(eq(Platform.AMAZON), anyString(), any(), any()))
                 .thenReturn(new ScrapedProduct(
                         "Apple iPhone 12 (Black, 64 GB)",
                         new BigDecimal("47990.00"),

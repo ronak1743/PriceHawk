@@ -103,11 +103,28 @@ class FlipkartPriceParserTest {
     void parse_realLiveFlipkartDyazoFixture() throws Exception {
         String html = loadFixture("flipkart_dyazo.html");
         String url = "https://www.flipkart.com/dyazo-plus-laptop-sleeve-15-6-inch-durable-shockproof-carrying-case-pocket-bag/p/itm711dcbae6461f?pid=ACCHJYHEUFGUVZWP";
-
         ScrapedProduct product = parser.parse(html, url);
         assertThat(product).isNotNull();
         assertThat(product.getTitle()).contains("Dyazo Plus Laptop Sleeve 15.6 inch");
         assertThat(product.getPrice()).isEqualByComparingTo(new BigDecimal("329"));
         assertThat(product.isInStock()).isTrue();
+    }
+
+    @Test
+    @DisplayName("correctly extracts true selling price fsp on modern Flipkart page ignoring bank/creditcard offers")
+    void parse_modernFlipkartPageIgnoringBankOffers() {
+        String html = """
+                <html><body>
+                  <h1>JACK & JONES Men Solid Crew Neck Cotton Blend Brown T-Shirt</h1>
+                  <div class="css-146c3p1">Buy at ₹806 with Bank Offer</div>
+                  <script>
+                    window.__INITIAL_STATE__ = {
+                      "ppd": {"fsp": 849, "finalPrice": 999, "mrp": 2499, "nepPrice": 806}
+                    };
+                  </script>
+                </body></html>
+                """;
+        ScrapedProduct product = parser.parse(html, "https://www.flipkart.com/jack-jones-solid-men-crew-neck-brown-t-shirt/p/itm384f8687de94d?pid=TSHH9N9GDFTHWYBT");
+        assertThat(product.getPrice()).isEqualByComparingTo(new BigDecimal("849"));
     }
 }

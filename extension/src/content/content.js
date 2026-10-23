@@ -11,12 +11,15 @@ import './content.css';
     return;
   }
 
-  const details = extractProductDetails(window.location.href);
-  if (!details) return;
+  const initialDetails = extractProductDetails(window.location.href);
 
   const container = document.createElement('div');
   container.id = 'pricehawk-sentinel-badge';
   container.className = 'pricehawk-floating-sentinel';
+
+  const initialPriceDisplay = initialDetails?.currentPrice && initialDetails.currentPrice > 0
+    ? `₹${initialDetails.currentPrice.toLocaleString('en-IN')}`
+    : 'Detecting...';
 
   container.innerHTML = `
     <div class="ph-widget-inner">
@@ -29,7 +32,7 @@ import './content.css';
       </div>
       <div class="ph-badge-info">
         <span class="ph-badge-brand">PriceHawk</span>
-        <span class="ph-badge-price">₹${details.currentPrice ? details.currentPrice.toLocaleString('en-IN') : 'Detecting...'}</span>
+        <span class="ph-badge-price">${initialPriceDisplay}</span>
       </div>
       <button id="pricehawk-track-btn" class="ph-track-btn">
         <span>Track Price</span>
@@ -42,6 +45,46 @@ import './content.css';
 
   const trackBtn = document.getElementById('pricehawk-track-btn');
   const toast = document.getElementById('pricehawk-toast');
+  const priceSpan = container.querySelector('.ph-badge-price');
+
+  // Dynamic price updater to catch asynchronous React/SPA mounting
+  const updatePriceBadge = () => {
+    try {
+      const live = extractProductDetails(window.location.href);
+      if (priceSpan && live && live.currentPrice && live.currentPrice > 0) {
+        priceSpan.textContent = `₹${live.currentPrice.toLocaleString('en-IN')}`;
+        return true;
+      }
+    } catch {}
+    return false;
+  };
+
+  // Immediate check
+  if (!updatePriceBadge()) {
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (updatePriceBadge() || attempts >= 25) {
+        clearInterval(interval);
+      }
+    }, 200);
+
+    const observer = new MutationObserver(() => {
+      if (updatePriceBadge()) {
+        observer.disconnect();
+        clearInterval(interval);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    setTimeout(() => {
+      observer.disconnect();
+      clearInterval(interval);
+    }, 8000);
+  }
 
   const showToast = (message, isError = false) => {
     toast.textContent = message;
@@ -65,6 +108,7 @@ import './content.css';
         }
 
         try {
+          const freshDetails = extractProductDetails(window.location.href) || initialDetails;
           const res = await fetch('http://localhost:8080/products/track', {
             method: 'POST',
             headers: {
@@ -72,10 +116,10 @@ import './content.css';
               Authorization: `Bearer ${result.token}`,
             },
             body: JSON.stringify({
-              url: details.url,
-              title: details.title,
-              currentPrice: details.currentPrice || 1.0,
-              imageUrl: details.imageUrl,
+              url: freshDetails.url,
+              title: freshDetails.title,
+              currentPrice: freshDetails.currentPrice || 1.0,
+              imageUrl: freshDetails.imageUrl,
             }),
           });
 

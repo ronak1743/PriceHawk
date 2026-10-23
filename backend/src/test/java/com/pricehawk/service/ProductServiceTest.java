@@ -329,7 +329,7 @@ class ProductServiceTest {
 
         when(trackedItemRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(item));
         when(trackedItemRepository.save(item)).thenReturn(item);
-        when(crossPlatformSearchService.findCounterpartProduct(eq(Platform.AMAZON), eq("iPhone 15")))
+        when(crossPlatformSearchService.findCounterpartProduct(eq(Platform.AMAZON), eq("iPhone 15"), any(), any()))
                 .thenReturn(new com.pricehawk.scraper.ScrapedProduct(
                         "iPhone 15 (Black, 128 GB)",
                         new BigDecimal("67990.00"),

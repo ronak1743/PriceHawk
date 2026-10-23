@@ -183,18 +183,90 @@ export default function App() {
     setMatchingId(productId);
     setError(null);
     try {
-      const updated = await addProductSource(auth.token, productId, { autoDiscover: true });
       const current = products.find((p) => p.id === productId);
+      const currentSource = current?.sources?.[0];
+      const isFromAmazon = currentSource?.platform === 'AMAZON';
+      const targetPlatformName = isFromAmazon ? 'Flipkart' : 'Amazon';
+      const targetDomain = isFromAmazon ? 'flipkart.com' : 'amazon.in';
+
+      // 1. Smart Tab Discovery: Check if user already has the counterpart page open in Chrome
+      let matchingTabUrl = null;
+      if (typeof chrome !== 'undefined' && chrome.tabs?.query && current) {
+        try {
+          const tabs = await chrome.tabs.query({});
+          const combinedSource = ((current.title || '') + ' ' + (currentSource?.url || '')).toLowerCase();
+
+          // Look for model code (e.g. CH2885, CH2599, FS4813, 15-fa0666TX)
+          const modelMatch = combinedSource.match(/\b([a-z]{1,4}\d{3,5}[a-z]{0,3}|\d{1,2}-[a-z0-9]{3,8})\b/i);
+          const modelCode = modelMatch ? modelMatch[1].toLowerCase() : null;
+
+          const brandMatch = combinedSource.match(/\b(apple|samsung|hp|dell|lenovo|asus|acer|msi|oneplus|boat|noise|fossil|casio|titan|timex|sony)\b/i);
+          const brand = brandMatch ? brandMatch[1].toLowerCase() : null;
+
+          const KNOWN_SERIES_LIST = [
+            'decker', 'rhett', 'grant', 'nate', 'neutra', 'townsman', 'machine', 'flynn',
+            'kerrigan', 'stella', 'bannon', 'minimalist', 'tourer', 'heritage', 'dean',
+            'riley', 'jacqueline', 'edifice', 'enticer', 'karishma', 'raga', 'octane',
+            'victus', 'pavilion', 'omen', 'thinkpad', 'ideapad', 'loq', 'legion', 'vivobook',
+            'zenbook', 'tuf', 'rog', 'predator', 'nitro', 'inspiron', 'vostro', 'macbook',
+            'iphone', 'galaxy', 'airdopes', 'airpods'
+          ];
+          const seriesMatch = combinedSource.match(new RegExp('\\b(' + KNOWN_SERIES_LIST.join('|') + ')\\b', 'i'));
+          const series = seriesMatch ? seriesMatch[1].toLowerCase() : null;
+
+          for (const t of tabs) {
+            const tUrl = (t.url || '').toLowerCase();
+            const tTitle = (t.title || '').toLowerCase();
+            if (!tUrl.includes(targetDomain) && !tTitle.includes(targetDomain)) continue;
+
+            const isProduct = isFromAmazon
+              ? (tUrl.includes('/p/') || tUrl.includes('/itm'))
+              : (tUrl.includes('/dp/') || tUrl.includes('/gp/product'));
+            if (!isProduct) continue;
+
+            const tFull = tUrl + ' ' + tTitle;
+
+            // Strict series conflict check: If source has a series (e.g. decker),
+            // tab must NEVER belong to a conflicting series (e.g. rhett, grant, machine)!
+            if (series) {
+              const conflictingSeries = KNOWN_SERIES_LIST.find((s) => s !== series && tFull.includes(s));
+              if (conflictingSeries) {
+                continue;
+              }
+            }
+
+            if (modelCode && tFull.includes(modelCode)) {
+              matchingTabUrl = t.url;
+              break;
+            } else if (brand && series && tFull.includes(brand) && tFull.includes(series)) {
+              matchingTabUrl = t.url;
+              break;
+            }
+          }
+        } catch (tabErr) {
+          console.warn('Tab discovery skipped', tabErr);
+        }
+      }
+
+      let updated;
+      if (matchingTabUrl) {
+        // Instantly link the counterpart from user's open tab
+        updated = await addProductSource(auth.token, productId, { url: matchingTabUrl, autoDiscover: false });
+      } else {
+        // Fallback to automated catalog search
+        updated = await addProductSource(auth.token, productId, { autoDiscover: true });
+      }
+
       const isNewSourceAdded = updated.sources && updated.sources.length > (current?.sources?.length || 0);
 
       setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
       setChartRefreshTrigger(Date.now());
 
       if (isNewSourceAdded) {
-        setActionSuccess('Counterpart product auto-matched & linked!');
+        setActionSuccess(`Counterpart product auto-matched & linked on ${targetPlatformName}!`);
         setTimeout(() => setActionSuccess(null), 3000);
       } else {
-        setError('No counterpart found on other platform. Try pasting the link directly with "+ Paste URL".');
+        setError(`No counterpart found on ${targetPlatformName}. Try pasting the link directly with "+ Paste URL".`);
       }
     } catch (err) {
       setError(err.message || 'Could not auto-match counterpart on other platform');
@@ -319,42 +391,105 @@ export default function App() {
                   const tEl = document.querySelector('span.VU-ZEz') || document.querySelector('span.B_NuCI') || document.querySelector('h1');
                   if (tEl) title = tEl.textContent.trim();
 
-                  const pSelectors = [
-                    'div.Nx9bqj.CxhGGd',
-                    'div._30jeq3._16Jk6d',
-                    'div.hl05eU div.Nx9bqj',
-                    'div._25b18c div.Nx9bqj',
-                    'div.Nx9bqj',
-                    'div._30jeq3',
-                    'div._16Jk6d',
-                    'div.hZ3P6w',
-                    'div[class*="Nx9bqj"]',
-                    'div[class*="30jeq3"]',
-                    'span[class*="Nx9bqj"]',
-                  ];
-                  for (const s of pSelectors) {
-                    const el = document.querySelector(s);
-                    if (el && el.textContent) {
-                      const clean = el.textContent.replace(/[^0-9.]/g, '');
-                      const val = parseFloat(clean);
-                      if (!isNaN(val) && val > 0) { price = val; break; }
+                  // 1. Primary Product Canonical Selling Price (fsp) from embedded state
+                  try {
+                    const scripts = document.querySelectorAll('script');
+                    for (const s of scripts) {
+                      const text = s.textContent || '';
+                      if (text.includes('"ppd"') || text.includes('"fsp"') || text.includes('"primaryProductPrice"')) {
+                        const fspMatch = text.match(/"fsp"\s*:\s*([1-9][0-9]*(?:\.[0-9]+)?)/);
+                        if (fspMatch && fspMatch[1]) {
+                          const val = parseFloat(fspMatch[1]);
+                          if (!isNaN(val) && val > 0) { price = val; break; }
+                        }
+                        const prodMatch = text.match(/"(?:productPrice|primaryProductPrice)"\s*:\s*"?([1-9][0-9]*(?:\.[0-9]+)?)"?/);
+                        if (prodMatch && prodMatch[1]) {
+                          const val = parseFloat(prodMatch[1]);
+                          if (!isNaN(val) && val > 0) { price = val; break; }
+                        }
+                      }
+                    }
+                  } catch { }
+
+                  // 2. Standard Flipkart price selectors (excluding ad carousels and recommendation cards)
+                  if (!price) {
+                    const pSelectors = [
+                      'div.Nx9bqj.CxhGGd',
+                      'div._30jeq3._16Jk6d',
+                      'div.v1zwn21n',
+                      'span.v1zwn21n',
+                      'div[font="default-fk-font-m"]',
+                      'div.hl05eU div.Nx9bqj',
+                      'div._25b18c div.Nx9bqj',
+                      'div.Nx9bqj',
+                      'div._30jeq3',
+                      'div._16Jk6d',
+                      'div.hZ3P6w',
+                      'div[class*="Nx9bqj"]',
+                      'div[class*="30jeq3"]',
+                      'span[class*="Nx9bqj"]',
+                    ];
+                    for (const s of pSelectors) {
+                      const els = document.querySelectorAll(s);
+                      for (const el of els) {
+                        if (!el || !el.textContent) continue;
+                        if (el.closest('a[href*="/p/"]') || el.closest('a[href*="pid="]') || el.closest('[data-tracking-id]') || el.closest('.recommendation-carousel')) {
+                          continue;
+                        }
+                        const style = el.getAttribute('style') || '';
+                        if (style.includes('line-through')) continue;
+                        const text = el.textContent.trim();
+                        if (!text.includes('₹') && !text.toLowerCase().includes('rs')) continue;
+                        const m = text.match(/(?:₹|rs\.?)\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/i);
+                        if (!m || !m[1]) continue;
+                        const val = parseFloat(m[1].replace(/,/g, ''));
+                        if (!isNaN(val) && val > 0) { price = val; break; }
+                      }
+                      if (price) break;
                     }
                   }
 
+                  // 3. Fallback to finalPrice
                   if (!price) {
                     try {
                       const scripts = document.querySelectorAll('script');
                       for (const s of scripts) {
                         const text = s.textContent || '';
-                        if (text.includes('"finalPrice"') || text.includes('"fsp"') || text.includes('"specialPrice"')) {
-                          const m = text.match(/"(?:finalPrice|fsp|specialPrice)"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
-                          if (m && m[1]) {
-                            const val = parseFloat(m[1]);
+                        if (text.includes('"finalPrice"') || text.includes('"specialPrice"')) {
+                          const finalMatch = text.match(/"(?:finalPrice|specialPrice)"\s*:\s*([1-9][0-9]*(?:\.[0-9]+)?)/);
+                          if (finalMatch && finalMatch[1]) {
+                            const val = parseFloat(finalMatch[1]);
                             if (!isNaN(val) && val > 0) { price = val; break; }
                           }
                         }
                       }
                     } catch { }
+                  }
+
+                  // 4. Standalone leaf element with ₹, strictly excluding recommendation/ad links and strike-through
+                  if (!price) {
+                    try {
+                      const candidates = document.querySelectorAll('div, span');
+                      for (const el of candidates) {
+                        if (el.children.length === 0) {
+                          if (el.closest('a[href*="/p/"]') || el.closest('a[href*="pid="]') || el.closest('[data-tracking-id]') || el.closest('.recommendation-carousel')) {
+                            continue;
+                          }
+                          const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+                          if (style && style.textDecorationLine && style.textDecorationLine.includes('line-through')) {
+                            continue;
+                          }
+                          const text = el.textContent?.trim() || '';
+                          if (text.startsWith('₹') || text.toLowerCase().startsWith('rs')) {
+                            const m = text.match(/(?:₹|rs\.?)\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/i);
+                            if (m && m[1]) {
+                              const val = parseFloat(m[1].replace(/,/g, ''));
+                              if (!isNaN(val) && val > 0) { price = val; break; }
+                            }
+                          }
+                        }
+                      }
+                    } catch {}
                   }
 
                   const imgEl = document.querySelector('img.DByuf4, img._396cs4._2amPTt, img._396cs4, img[src*="rukminim"]');
@@ -382,8 +517,17 @@ export default function App() {
           : 1.0;
         const imageUrl = details?.imageUrl || '';
 
+        let trackUrl = tab.url;
+        if (trackUrl && trackUrl.includes('flipkart.')) {
+          try {
+            const u = new URL(trackUrl);
+            const pid = u.searchParams.get('pid');
+            trackUrl = pid ? `${u.origin}${u.pathname}?pid=${pid}` : `${u.origin}${u.pathname}`;
+          } catch {}
+        }
+
         const item = await trackProduct(auth.token, {
-          url: tab.url,
+          url: trackUrl,
           title,
           currentPrice,
           imageUrl,

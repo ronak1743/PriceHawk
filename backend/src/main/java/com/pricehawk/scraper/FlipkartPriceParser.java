@@ -63,8 +63,14 @@ public class FlipkartPriceParser implements PriceParser {
         return doc.title().trim();
     }
 
+    private static final Pattern FSP_PPD_PATTERN =
+            Pattern.compile("\"ppd\"\\s*:\\s*\\{[^}]*\"fsp\"\\s*:\\s*([1-9][0-9]*(?:\\.[0-9]+)?)");
+
+    private static final Pattern PRODUCT_PRICE_PATTERN =
+            Pattern.compile("\"(?:productPrice|primaryProductPrice)\"\\s*:\\s*\"?([1-9][0-9]*(?:\\.[0-9]+)?)\"?");
+
     private static final Pattern PPD_PATTERN =
-            Pattern.compile("\"ppd\"\\s*:\\s*\\{[^}]*\"(?:finalPrice|fsp)\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
+            Pattern.compile("\"ppd\"\\s*:\\s*\\{[^}]*\"(?:fsp|finalPrice)\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
 
     private static final Pattern LP_PATTERN =
             Pattern.compile("(?:\\\\\"|\")lp(?:\\\\\"|\")\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
@@ -73,10 +79,32 @@ public class FlipkartPriceParser implements PriceParser {
             Pattern.compile("\"price_description_1\".*?\"label_2\".*?\"text\"\\s*:\\s*\"(?:\\\\u20b9|₹)?([0-9,]+)\"");
 
     private BigDecimal extractPrice(Document doc) {
-        // 1. Desktop & standard server-rendered selectors
+        String html = doc.html();
+
+        // 1. Special Selling Price (fsp) in primary product embedded state
+        Matcher fspMatcher = FSP_PPD_PATTERN.matcher(html);
+        if (fspMatcher.find()) {
+            BigDecimal parsed = parsePriceString(fspMatcher.group(1));
+            if (parsed != null && parsed.compareTo(BigDecimal.ZERO) > 0) {
+                return parsed;
+            }
+        }
+
+        Matcher prodPriceMatcher = PRODUCT_PRICE_PATTERN.matcher(html);
+        if (prodPriceMatcher.find()) {
+            BigDecimal parsed = parsePriceString(prodPriceMatcher.group(1));
+            if (parsed != null && parsed.compareTo(BigDecimal.ZERO) > 0) {
+                return parsed;
+            }
+        }
+
+        // 2. Desktop & standard server-rendered selectors (including modern React Native Web classes)
         String[] selectors = {
                 "div.Nx9bqj.CxhGGd",
                 "div._30jeq3._16Jk6d",
+                "div.v1zwn21n",
+                "span.v1zwn21n",
+                "div[font='default-fk-font-m']",
                 "div.hl05eU div.Nx9bqj",
                 "div._25b18c div.Nx9bqj",
                 "div.Nx9bqj",
@@ -88,18 +116,30 @@ public class FlipkartPriceParser implements PriceParser {
         };
 
         for (String selector : selectors) {
-            Element el = doc.selectFirst(selector);
-            if (el != null && !el.text().isBlank()) {
-                BigDecimal parsed = parsePriceString(el.text());
+            for (Element el : doc.select(selector)) {
+                if (el.text().isBlank()) continue;
+                // Exclude elements inside recommendation / ad links
+                boolean isInsideOtherProductLink = el.parents().stream().anyMatch(p ->
+                        p.tagName().equalsIgnoreCase("a") && (p.attr("href").contains("/p/") || p.attr("href").contains("pid=")));
+                if (isInsideOtherProductLink) continue;
+
+                // Ignore elements with line-through (MRP / strike-through)
+                String style = el.attr("style");
+                if (style != null && style.contains("line-through")) {
+                    continue;
+                }
+                String text = el.text().trim();
+                if (!text.contains("₹") && !text.toLowerCase().contains("rs")) {
+                    continue;
+                }
+                BigDecimal parsed = parsePriceString(text);
                 if (parsed != null && parsed.compareTo(BigDecimal.ZERO) > 0) {
                     return parsed;
                 }
             }
         }
 
-        // 2. Modern React-Native-Web embedded JSON state (Flipkart PDP ppd / nepContext / price_description)
-        String html = doc.html();
-
+        // 3. Fallback PPD finalPrice
         Matcher ppdMatcher = PPD_PATTERN.matcher(html);
         if (ppdMatcher.find()) {
             BigDecimal parsed = parsePriceString(ppdMatcher.group(1));
