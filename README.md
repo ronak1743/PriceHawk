@@ -6,7 +6,7 @@
 [![Chrome Extension](https://img.shields.io/badge/Chrome%20Extension-Manifest%20V3-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2015-blue.svg)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/Tests-106%20Backend%20%7C%2018%20Frontend%20Passed-success.svg)](#testing)
+[![Tests Passing](https://img.shields.io/badge/Tests-119%20Backend%20%7C%2018%20Frontend%20Passed-success.svg)](#testing)
 [![CI Pipeline](https://github.com/ronak1743/PriceHawk/actions/workflows/ci.yml/badge.svg)](https://github.com/ronak1743/PriceHawk/actions/workflows/ci.yml)
 
 **PriceHawk** is a full-stack, automated e-commerce price tracking and alert ecosystem designed for **Amazon India** and **Flipkart**. It empowers shoppers to track product prices with a single click, view synchronized historical price charts, compare deals across competing stores side-by-side, and receive instantaneous drop alerts via in-app notifications and email.
@@ -159,7 +159,63 @@ If you only want to use the **PriceHawk** Chrome extension on your browser:
 
 ---
 
-### 💻 Developer & Local Backend Setup
+## 📖 How to Use the Extension (User Guide)
+
+### 1. 🔐 Account Sign Up & Login
+- Click the **PriceHawk** icon in your browser toolbar.
+- If you're a new user, switch to **Register** and create an account with your email and password.
+- Sign in to securely sync your tracked items, price drops, and alert preferences across devices.
+
+---
+
+### 2. ⚡ On-Page Floating Badge (Instant 1-Click Track)
+- Browse any product page on **Amazon.in** or **Flipkart.com**.
+- Notice the floating **PriceHawk Sentinel Badge** in the bottom-right corner of the page:
+  - It automatically extracts and displays the **live product price**.
+  - Click **"Track"** directly on the badge to add the item to your watchlist instantly without even opening the popup.
+  - Once tracked, the badge turns into a green **"Tracking ✓"** status indicator.
+
+---
+
+### 3. 🎯 Tracking Products via the Popup
+- Open the **PriceHawk** popup on any Amazon or Flipkart product page.
+- Click **"Track Current Tab Product"** — PriceHawk automatically extracts the title, product image, exact variant (color, RAM/storage), and real-time price.
+- You can also paste any Amazon or Flipkart product URL into the top search bar and click **Track**.
+
+---
+
+### 4. ⚖️ Cross-Platform Deal Comparison & Auto-Matching
+- For every tracked product, PriceHawk allows you to compare prices between **Amazon** and **Flipkart** side-by-side:
+  - **Auto-Discovery**: Click **"Find Counterpart"** — our intelligent search engine finds the matching product, specs, and storage variant on the rival store.
+  - **Best Deal Badge**: Highlights which store offers the cheaper price with an instant savings badge (e.g. `Save ₹2,000 on Flipkart`).
+  - **Manual Link**: If you already have the counterpart URL, click **"+ Paste URL"** to link it directly.
+
+---
+
+### 5. 📉 Interactive Price History Charts
+- Click on any product card in your watchlist to expand the **Price History Chart**.
+- **Dual-Store Tabs**: Toggle between **Amazon** and **Flipkart** to view individual historical trendlines.
+- **Key Metrics**: View **All-Time Low (ATL)**, **Current Price**, and **All-Time High (ATH)** at a single glance.
+
+---
+
+### 6. 🔔 Setting Price Drop Alerts
+PriceHawk supports two alert modes:
+1. **Normal Alert Mode (Default)**: Automatically triggers an alert whenever the price drops below its previous verified price.
+2. **Target Price Mode**:
+   - Click the **Bell icon (🔔)** on any product card.
+   - Enter your target budget (e.g. `29999`).
+   - Click **Save Target**. PriceHawk will alert you the moment the price reaches or falls below your threshold.
+- **Alert Channels**: In-app unread notification counter and automated email alerts delivered via **Brevo** / **Resend**.
+
+---
+
+### 7. 🔄 Managing Your Watchlist
+- **Manual Price Refresh**: Click the 🔄 refresh icon on any product card to scrape live prices on demand.
+- **Notifications Center**: Click the **Alerts** tab at the top to inspect price drop notifications. Read alerts are automatically purged after 48 hours.
+- **Stop Tracking**: Click the 🗑️ trash icon to remove a product and its price history.
+
+---
 
 #### 1. Prerequisites
 - **Java**: 21 LTS (or Java 17+)
@@ -276,7 +332,7 @@ PriceHawk backend includes an enterprise multi-stage [`backend/Dockerfile`](file
 
 ## 🧪 Testing Summary
 
-- **Backend**: **106 / 106** unit & integration tests passing (`JUnit 5`, `Mockito`, `MockMvc`, H2).
+- **Backend**: **119 / 119** unit & integration tests passing (`JUnit 5`, `Mockito`, `MockMvc`, H2).
 - **Extension**: **18 / 18** frontend test suites passing (`Vitest`, `React Testing Library`).
 - Coverage spans: Authentication, CORS filters, multi-tier scraping fallback, resilient dual-store sync, alert triggers, 48-hour purge, and UI interactions.
 
