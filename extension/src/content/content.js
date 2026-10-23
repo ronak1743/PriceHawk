@@ -123,6 +123,14 @@ import './content.css';
             }),
           });
 
+          if (res.status === 401) {
+            chrome.storage.local.remove(['token', 'user']);
+            showToast('Your session has expired. Please sign in via PriceHawk extension.', true);
+            trackBtn.disabled = false;
+            trackBtn.innerHTML = '<span>Track Price</span>';
+            return;
+          }
+
           if (!res.ok) {
             let errorMsg = 'Failed to track product';
             try {

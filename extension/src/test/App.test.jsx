@@ -156,4 +156,61 @@ describe('App - Extension Login UI', () => {
 
     expect(chrome.storage.local.remove).toHaveBeenCalledWith(['token', 'user']);
   });
+
+  it('redirects to login when stored JWT token has expired based on exp claim', async () => {
+    // Generate an expired JWT token (expired 1 hour ago)
+    const expiredPayload = btoa(JSON.stringify({ sub: 'expired@example.com', exp: Math.floor(Date.now() / 1000) - 3600 }));
+    const expiredToken = `eyJhbGciOiJIUzI1NiJ9.${expiredPayload}.mock_sig`;
+
+    chrome.storage.local.get.mockImplementationOnce((keys, cb) => {
+      const res = {
+        token: expiredToken,
+        user: { id: 99, username: 'charlie', email: 'expired@example.com' },
+      };
+      if (cb) cb(res);
+      return Promise.resolve(res);
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your session has expired. Please sign in again./i)).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /Sign In/i })).toBeInTheDocument();
+      expect(screen.queryByText(/Welcome/i)).not.toBeInTheDocument();
+    });
+
+    expect(chrome.storage.local.remove).toHaveBeenCalledWith(['token', 'user']);
+  });
+
+  it('redirects to login and clears session when API returns 401 Unauthorized', async () => {
+    chrome.storage.local.get.mockImplementationOnce((keys, cb) => {
+      const res = {
+        token: 'valid.looking.token',
+        user: { id: 55, username: 'dave', email: 'dave@example.com' },
+      };
+      if (cb) cb(res);
+      return Promise.resolve(res);
+    });
+
+    globalThis.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/products') || url.includes('/alerts')) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ message: 'JWT expired' }),
+        });
+      }
+      return Promise.reject(new Error('Unknown URL: ' + url));
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your session has expired. Please sign in again./i)).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /Sign In/i })).toBeInTheDocument();
+      expect(screen.queryByText(/Welcome, dave/i)).not.toBeInTheDocument();
+    });
+
+    expect(chrome.storage.local.remove).toHaveBeenCalledWith(['token', 'user']);
+  });
 });

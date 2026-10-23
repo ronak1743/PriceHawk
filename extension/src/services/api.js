@@ -4,6 +4,55 @@
 
 export const API_BASE = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
 
+let unauthorizedHandler = null;
+
+export function setUnauthorizedHandler(fn) {
+  unauthorizedHandler = fn;
+}
+
+export function handleUnauthorized() {
+  if (typeof unauthorizedHandler === 'function') {
+    unauthorizedHandler();
+  }
+}
+
+/**
+ * Check if an API response indicates expired/invalid JWT credentials (401 or 403)
+ */
+export function checkResponseAuth(response) {
+  if (response && (response.status === 401 || response.status === 403)) {
+    handleUnauthorized();
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+}
+
+/**
+ * Inspect client-side JWT token expiration without external libraries
+ */
+export function isTokenExpired(token) {
+  if (!token || typeof token !== 'string') return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    if (payload && typeof payload.exp === 'number') {
+      // Check if current time has passed expiry (with a 5 second safety margin)
+      return Date.now() >= (payload.exp * 1000 - 5000);
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 export async function login(email, password) {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
@@ -48,6 +97,7 @@ export async function getProducts(token) {
       Authorization: `Bearer ${token}`,
     },
   });
+  checkResponseAuth(response);
   if (!response.ok) throw new Error('Failed to fetch tracked products');
   return response.json();
 }
@@ -61,6 +111,7 @@ export async function trackProduct(token, productData) {
     },
     body: JSON.stringify(productData),
   });
+  checkResponseAuth(response);
   if (!response.ok) {
     let msg = 'Failed to track product';
     try {
@@ -80,6 +131,7 @@ export async function deleteProduct(token, id) {
       Authorization: `Bearer ${token}`,
     },
   });
+  checkResponseAuth(response);
   if (!response.ok) throw new Error('Failed to delete product');
   return true;
 }
@@ -90,6 +142,7 @@ export async function getAlerts(token) {
       Authorization: `Bearer ${token}`,
     },
   });
+  checkResponseAuth(response);
   if (!response.ok) throw new Error('Failed to fetch alerts');
   return response.json();
 }
@@ -101,6 +154,7 @@ export async function markAlertRead(token, id) {
       Authorization: `Bearer ${token}`,
     },
   });
+  checkResponseAuth(response);
   if (!response.ok) throw new Error('Failed to mark alert as read');
   return true;
 }
@@ -112,6 +166,7 @@ export async function refreshProduct(token, id) {
       Authorization: `Bearer ${token}`,
     },
   });
+  checkResponseAuth(response);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || 'Failed to refresh product price');
@@ -125,6 +180,7 @@ export async function getProductHistory(token, id) {
       Authorization: `Bearer ${token}`,
     },
   });
+  checkResponseAuth(response);
   if (!response.ok) throw new Error('Failed to fetch price history');
   return response.json();
 }
@@ -138,6 +194,7 @@ export async function updateTargetPrice(token, id, targetPrice) {
     },
     body: JSON.stringify({ targetPrice }),
   });
+  checkResponseAuth(response);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || 'Failed to update target price');
@@ -154,6 +211,7 @@ export async function addProductSource(token, id, { url, autoDiscover }) {
     },
     body: JSON.stringify({ url: url || null, autoDiscover: Boolean(autoDiscover) }),
   });
+  checkResponseAuth(response);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.message || 'Failed to add counterpart source');
@@ -170,10 +228,10 @@ export async function updateAlertSettings(token, id, { targetPrice, notifyOnAnyD
     },
     body: JSON.stringify({ targetPrice, notifyOnAnyDrop }),
   });
+  checkResponseAuth(response);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.message || 'Failed to update alert settings');
   }
   return data;
 }
-

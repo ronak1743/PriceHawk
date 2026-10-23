@@ -1,6 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getAuth, setAuth as saveAuth, clearAuth } from './services/storage';
-import { login, register, getProducts, deleteProduct, getAlerts, markAlertRead, trackProduct, refreshProduct, addProductSource } from './services/api';
+import {
+  login,
+  register,
+  getProducts,
+  deleteProduct,
+  getAlerts,
+  markAlertRead,
+  trackProduct,
+  refreshProduct,
+  addProductSource,
+  isTokenExpired,
+  setUnauthorizedHandler,
+} from './services/api';
 import PriceHistoryChart from './components/PriceHistoryChart';
 import './App.css';
 
@@ -59,26 +71,58 @@ export default function App() {
   const [trackingTab, setTrackingTab] = useState(false);
   const [markingReadId, setMarkingReadId] = useState(null);
 
+  const handleSessionExpired = React.useCallback(async () => {
+    await clearAuth();
+    setAuth(null);
+    setProducts([]);
+    setAlerts([]);
+    setMode('login');
+    setError('Your session has expired. Please sign in again.');
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(handleSessionExpired);
+    return () => setUnauthorizedHandler(null);
+  }, [handleSessionExpired]);
+
   useEffect(() => {
     getAuth().then((stored) => {
       if (stored?.token) {
-        setAuth(stored);
-        loadDashboardData(stored.token);
+        if (isTokenExpired(stored.token)) {
+          handleSessionExpired();
+        } else {
+          setAuth(stored);
+          loadDashboardData(stored.token);
+        }
       }
     });
-  }, []);
+  }, [handleSessionExpired]);
 
   const loadDashboardData = async (token) => {
+    if (isTokenExpired(token)) {
+      handleSessionExpired();
+      return;
+    }
     setFetchingData(true);
     try {
       const [fetchedProducts, fetchedAlerts] = await Promise.all([
-        getProducts(token).catch(() => []),
-        getAlerts(token).catch(() => []),
+        getProducts(token).catch((err) => {
+          if (err.message && err.message.includes('session has expired')) throw err;
+          return [];
+        }),
+        getAlerts(token).catch((err) => {
+          if (err.message && err.message.includes('session has expired')) throw err;
+          return [];
+        }),
       ]);
       setProducts(fetchedProducts || []);
       setAlerts(fetchedAlerts || []);
     } catch (err) {
-      console.error('Error loading dashboard data', err);
+      if (err.message && err.message.includes('session has expired')) {
+        handleSessionExpired();
+      } else {
+        console.error('Error loading dashboard data', err);
+      }
     } finally {
       setFetchingData(false);
     }
