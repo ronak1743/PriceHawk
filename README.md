@@ -6,7 +6,7 @@
 [![Chrome Extension](https://img.shields.io/badge/Chrome%20Extension-Manifest%20V3-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2015-blue.svg)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/Tests-119%20Backend%20%7C%2018%20Frontend%20Passed-success.svg)](#testing)
+[![Tests Passing](https://img.shields.io/badge/Tests-119%20Backend%20%7C%2020%20Frontend%20Passed-success.svg)](#testing)
 [![CI Pipeline](https://github.com/ronak1743/PriceHawk/actions/workflows/ci.yml/badge.svg)](https://github.com/ronak1743/PriceHawk/actions/workflows/ci.yml)
 
 **PriceHawk** is a full-stack, automated e-commerce price tracking and alert ecosystem designed for **Amazon India** and **Flipkart**. It empowers shoppers to track product prices with a single click, view synchronized historical price charts, compare deals across competing stores side-by-side, and receive instantaneous drop alerts via in-app notifications and email.
@@ -132,7 +132,7 @@ PriceHawk/
 │   ├── .env.example                     # Environment template
 │   └── dist/                            # Production build artifact
 │
-└── PriceHawk-Extension-v1.0.0.zip       # Pre-packaged, ready-to-load Chrome Extension
+└── PriceHawk-Extension-v1.1.0.zip       # Pre-packaged, ready-to-load Chrome Extension (v1.1.0)
 ```
 
 ---
@@ -145,7 +145,7 @@ If you only want to use the **PriceHawk** Chrome extension on your browser:
 
 1. **Download the Extension**:
    - Go to the **[Releases](https://github.com/ronak1743/PriceHawk/releases)** page.
-   - Under the latest release (e.g. `v1.0.0`), download **`PriceHawk-Extension-v1.0.0.zip`** from the **Assets** section.
+   - Under the latest release (e.g. `v1.1.0`), download **`PriceHawk-Extension-v1.1.0.zip`** from the **Assets** section.
 2. **Extract the ZIP**:
    - Extract / unzip the downloaded ZIP file into a folder on your computer (e.g., `Documents/PriceHawk-Extension`).
 3. **Load into Google Chrome**:
@@ -325,15 +325,15 @@ PriceHawk backend includes an enterprise multi-stage [`backend/Dockerfile`](file
    - **Environment Variables**: Add `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `BREVO_API_KEY`.
 2. **Configure Extension for Production**:
    - In `extension/.env`, set `VITE_API_BASE_URL=https://<your-render-service>.onrender.com`.
-   - Run `npm run build && cd dist && zip -r ../../PriceHawk-Extension-v1.0.0.zip ./*`.
-   - Distribute the resulting `PriceHawk-Extension-v1.0.0.zip` to users!
+   - Run `npm run build && cd dist && zip -r ../../PriceHawk-Extension-v1.1.0.zip ./*`.
+   - Distribute the resulting `PriceHawk-Extension-v1.1.0.zip` to users!
 
 ---
 
 ## 🧪 Testing Summary
 
 - **Backend**: **119 / 119** unit & integration tests passing (`JUnit 5`, `Mockito`, `MockMvc`, H2).
-- **Extension**: **18 / 18** frontend test suites passing (`Vitest`, `React Testing Library`).
+- **Extension**: **20 / 20** frontend test suites passing (`Vitest`, `React Testing Library`).
 - Coverage spans: Authentication, CORS filters, multi-tier scraping fallback, resilient dual-store sync, alert triggers, 48-hour purge, and UI interactions.
 
 ---

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PriceHawk - Price Tracker",
-  "version": "0.0.1",
+  "version": "1.1.0",
   "description": "Smart price tracking for Amazon and Flipkart with drop alerts.",
   "action": {
     "default_popup": "index.html"

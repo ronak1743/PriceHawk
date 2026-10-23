@@ -621,7 +621,7 @@ export default function App() {
             <div className="brand-text-col">
               <div className="brand-title-row">
                 <h1 className="brand-title">PriceHawk</h1>
-                <span className="version-pill">v1.0 Pro</span>
+                <span className="version-pill">v1.1 Pro</span>
               </div>
               <p className="brand-subtitle">
                 <span className="brand-subtitle-dot" aria-hidden="true"></span>
@@ -651,7 +651,7 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <span className="version-pill">v1.0 Pro</span>
+            <span className="version-pill">v1.1 Pro</span>
           )}
         </div>
       </header>
