@@ -82,11 +82,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
 }
 
 .ph-track-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%);
   transform: scale(1.03);
+}
+
+.ph-track-btn:disabled {
+  opacity: 0.82;
+  cursor: wait;
+  transform: none;
 }
 
 .ph-track-btn.tracked {

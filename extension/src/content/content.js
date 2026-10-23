@@ -96,7 +96,7 @@ import './content.css';
 
   trackBtn.addEventListener('click', async () => {
     trackBtn.disabled = true;
-    trackBtn.innerHTML = '<span class="ph-spinner"></span>';
+    trackBtn.innerHTML = '<span class="ph-spinner"></span><span>Tracking...</span>';
 
     try {
       chrome.storage.local.get(['token'], async (result) => {

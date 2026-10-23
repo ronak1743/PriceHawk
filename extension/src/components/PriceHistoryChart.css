@@ -356,6 +356,10 @@
 }
 
 .save-target-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   padding: 5px 12px;
   background: var(--accent-gradient);
   border: none;
@@ -517,6 +521,10 @@
 }
 
 .cancel-limit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   padding: 5px 10px;
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.35);

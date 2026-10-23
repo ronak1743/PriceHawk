@@ -199,12 +199,17 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
           type="button"
           className={`chart-reload-btn ${loading ? 'spinning' : ''}`}
           onClick={fetchHistory}
+          disabled={loading}
           title="Reload price graph"
           aria-label="Reload price history"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-          </svg>
+          {loading ? (
+            <span className="btn-spinner small primary" aria-hidden="true"></span>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+          )}
         </button>
       </div>
 
@@ -336,7 +341,14 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
             disabled={savingTarget}
             title="Remove limit and switch to Normal Alert Mode"
           >
-            ✕ Remove Limit
+            {savingTarget ? (
+              <>
+                <span className="btn-spinner mini danger" aria-hidden="true"></span>
+                <span>Clearing...</span>
+              </>
+            ) : (
+              '✕ Remove Limit'
+            )}
           </button>
         )}
       </div>
@@ -360,7 +372,16 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
             />
           </div>
           <button type="submit" className="save-target-btn" disabled={savingTarget}>
-            {savingTarget ? '...' : saveSuccess ? '✓ Saved' : 'Set'}
+            {savingTarget ? (
+              <>
+                <span className="btn-spinner mini" aria-hidden="true"></span>
+                <span>Saving...</span>
+              </>
+            ) : saveSuccess ? (
+              '✓ Saved'
+            ) : (
+              'Set'
+            )}
           </button>
           {product.targetPrice != null && (
             <button
@@ -370,7 +391,14 @@ export default function PriceHistoryChart({ token, product, onTargetPriceUpdated
               disabled={savingTarget}
               title="Remove limit and switch to normal alert mode"
             >
-              ✕ Clear
+              {savingTarget ? (
+                <>
+                  <span className="btn-spinner mini danger" aria-hidden="true"></span>
+                  <span>Clearing...</span>
+                </>
+              ) : (
+                '✕ Clear'
+              )}
             </button>
           )}
         </div>

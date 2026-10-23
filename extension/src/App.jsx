@@ -44,18 +44,20 @@ export default function App() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Dashboard states
   const [dashboardTab, setDashboardTab] = useState('items'); // 'items' | 'alerts'
   const [products, setProducts] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [fetchingData, setFetchingData] = useState(false);
   const [refreshingId, setRefreshingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [matchingId, setMatchingId] = useState(null);
   const [linkingId, setLinkingId] = useState(null);
   const [manualUrl, setManualUrl] = useState('');
   const [expandedProductId, setExpandedProductId] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
   const [chartRefreshTrigger, setChartRefreshTrigger] = useState(0);
+  const [trackingTab, setTrackingTab] = useState(false);
+  const [markingReadId, setMarkingReadId] = useState(null);
 
   useEffect(() => {
     getAuth().then((stored) => {
@@ -150,7 +152,8 @@ export default function App() {
   };
 
   const handleDeleteProduct = async (productId) => {
-    if (!auth?.token) return;
+    if (!auth?.token || deletingId) return;
+    setDeletingId(productId);
     try {
       await deleteProduct(auth.token, productId);
       setProducts((prev) => prev.filter((p) => p.id !== productId));
@@ -158,6 +161,8 @@ export default function App() {
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err) {
       setError(err.message || 'Failed to delete item');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -296,7 +301,8 @@ export default function App() {
   };
 
   const handleMarkAlertRead = async (alertId) => {
-    if (!auth?.token) return;
+    if (!auth?.token || markingReadId) return;
+    setMarkingReadId(alertId);
     try {
       await markAlertRead(auth.token, alertId);
       setAlerts((prev) =>
@@ -304,11 +310,14 @@ export default function App() {
       );
     } catch (err) {
       setError(err.message || 'Failed to mark alert as read');
+    } finally {
+      setMarkingReadId(null);
     }
   };
 
   const handleTrackCurrentTab = async () => {
-    if (!auth?.token) return;
+    if (!auth?.token || trackingTab) return;
+    setTrackingTab(true);
     setError(null);
     try {
       if (typeof chrome !== 'undefined' && chrome.tabs?.query) {
@@ -538,6 +547,8 @@ export default function App() {
       }
     } catch (err) {
       setError(err.message || 'Failed to track current page');
+    } finally {
+      setTrackingTab(false);
     }
   };
 
@@ -606,12 +617,25 @@ export default function App() {
 
           {/* Quick Track Bar */}
           <div className="quick-track-container">
-            <button className="quick-track-btn" onClick={handleTrackCurrentTab}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Track Current Tab Product</span>
+            <button
+              className="quick-track-btn"
+              onClick={handleTrackCurrentTab}
+              disabled={trackingTab}
+            >
+              {trackingTab ? (
+                <>
+                  <span className="btn-spinner" aria-hidden="true"></span>
+                  <span>Tracking Product...</span>
+                </>
+              ) : (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  <span>Track Current Tab Product</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -723,23 +747,32 @@ export default function App() {
                                 title="Refresh live price"
                                 className={`action-icon-btn refresh-btn ${refreshingId === item.id ? 'spinning' : ''}`}
                                 onClick={() => handleRefreshProduct(item.id)}
-                                disabled={refreshingId === item.id}
+                                disabled={refreshingId === item.id || deletingId === item.id}
                               >
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="23 4 23 10 17 10"></polyline>
-                                  <polyline points="1 20 1 14 7 14"></polyline>
-                                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                                </svg>
+                                {refreshingId === item.id ? (
+                                  <span className="btn-spinner small primary" aria-hidden="true"></span>
+                                ) : (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <polyline points="1 20 1 14 7 14"></polyline>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                  </svg>
+                                )}
                               </button>
                               <button
                                 title="Delete item"
-                                className="action-icon-btn delete-btn"
+                                className={`action-icon-btn delete-btn ${deletingId === item.id ? 'deleting' : ''}`}
                                 onClick={() => handleDeleteProduct(item.id)}
+                                disabled={deletingId === item.id || refreshingId === item.id}
                               >
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="3 6 5 6 21 6"></polyline>
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
+                                {deletingId === item.id ? (
+                                  <span className="btn-spinner small danger" aria-hidden="true"></span>
+                                ) : (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                  </svg>
+                                )}
                               </button>
                             </div>
                           </div>
@@ -843,7 +876,14 @@ export default function App() {
                                     required
                                   />
                                   <button type="submit" className="manual-link-submit-btn" disabled={matchingId === item.id}>
-                                    {matchingId === item.id ? '...' : 'Link'}
+                                    {matchingId === item.id ? (
+                                      <>
+                                        <span className="btn-spinner mini" aria-hidden="true"></span>
+                                        <span>Linking...</span>
+                                      </>
+                                    ) : (
+                                      'Link'
+                                    )}
                                   </button>
                                 </form>
                               )}
@@ -901,9 +941,17 @@ export default function App() {
                           <button
                             className="mark-read-btn"
                             onClick={() => handleMarkAlertRead(alert.id)}
+                            disabled={markingReadId === alert.id}
                             title="Mark as read (will be auto-removed after 2 days)"
                           >
-                            Mark as Read
+                            {markingReadId === alert.id ? (
+                              <>
+                                <span className="btn-spinner mini" aria-hidden="true"></span>
+                                <span>Marking...</span>
+                              </>
+                            ) : (
+                              'Mark as Read'
+                            )}
                           </button>
                         ) : (
                           <span
