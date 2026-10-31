@@ -168,6 +168,44 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("trackProduct - tracks only the requested store and does not call rival platform")
+    void trackProduct_tracksOnlyRequestedStore() {
+        TrackProductRequest request = new TrackProductRequest(
+                "https://www.amazon.in/dp/B08L5WHJ2V",
+                "Apple iPhone 12",
+                new BigDecimal("49999.00"),
+                new BigDecimal("45000.00"),
+                "INR",
+                "https://amz.jpg"
+        );
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+        TrackedItem savedItem = new TrackedItem(testUser, request.getTitle(), request.getTargetPrice());
+        savedItem.setId(100L);
+        ItemSource savedSource = new ItemSource(
+                savedItem,
+                Platform.AMAZON,
+                request.getUrl(),
+                request.getCurrentPrice(),
+                request.getCurrentPrice(),
+                "INR",
+                request.getImageUrl()
+        );
+        savedSource.setId(200L);
+        savedItem.setSources(new ArrayList<>(List.of(savedSource)));
+
+        when(trackedItemRepository.save(any(TrackedItem.class))).thenReturn(savedItem);
+
+        TrackedItemResponse response = productService.trackProduct(1L, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getSources()).hasSize(1);
+        assertThat(response.getSources().get(0).getPlatform()).isEqualTo(Platform.AMAZON);
+        verifyNoInteractions(crossPlatformSearchService);
+    }
+
+    @Test
     @DisplayName("trackProduct - throws ResourceNotFoundException when user does not exist")
     void trackProduct_throwsException_whenUserNotFound() {
         TrackProductRequest request = new TrackProductRequest(
