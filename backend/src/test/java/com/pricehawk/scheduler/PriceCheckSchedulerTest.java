@@ -172,9 +172,9 @@ class PriceCheckSchedulerTest {
 
         priceCheckScheduler.checkAllPrices();
 
-        // Source 1 failed
+        // Source 1 failed live scrape, so it receives a synchronized fallback snapshot with existing price
         verify(priceScraperService).scrapeProduct(failedUrl);
-        verify(priceTrackingService, never()).recordPriceUpdate(eq(source1), any(), anyBoolean());
+        verify(priceTrackingService, times(1)).recordPriceUpdate(eq(source1), eq(new BigDecimal("1000.00")), eq(true));
 
         // Source 2 still processed successfully
         verify(priceScraperService).scrapeProduct(successUrl);

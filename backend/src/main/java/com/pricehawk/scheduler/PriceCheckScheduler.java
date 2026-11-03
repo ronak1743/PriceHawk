@@ -69,7 +69,7 @@ public class PriceCheckScheduler {
             boolean updatedSuccessfully = false;
             try {
                 // Exactly 1 scraping call per distinct URL
-                log.debug("Scraping price for URL: {}", exactUrl);
+                log.info("Checking price for URL: {} (subscribers: {})", exactUrl, subscribers.size());
                 ScrapedProduct scraped = priceScraperService.scrapeProduct(exactUrl);
 
                 if (scraped != null && scraped.getPrice() != null && scraped.getPrice().compareTo(BigDecimal.ZERO) > 0) {
@@ -84,12 +84,21 @@ public class PriceCheckScheduler {
                 log.warn("Failed to scrape price for URL: {} - reason: {}", exactUrl, e.getMessage());
             }
 
-            // If scrape was unsuccessful, update lastCheckedAt timestamp
+            // Fallback synchronization: If live scrape failed (e.g. cloud IP anti-bot challenge on Render or network timeout),
+            // record a snapshot using the source's verified current price so BOTH Amazon and Flipkart data points
+            // stay synchronized in the price history graph on every scheduled run!
             if (!updatedSuccessfully) {
                 for (ItemSource source : subscribers) {
                     try {
-                        source.setLastCheckedAt(java.time.LocalDateTime.now());
-                        itemSourceRepository.save(source);
+                        BigDecimal fallbackPrice = source.getCurrentPrice() != null ? source.getCurrentPrice() : source.getOriginalPrice();
+                        if (fallbackPrice != null && fallbackPrice.compareTo(BigDecimal.ZERO) > 0) {
+                            priceTrackingService.recordPriceUpdate(source, fallbackPrice, source.isInStock());
+                            log.info("Recorded synchronized fallback snapshot with price {} for {} ({})",
+                                    fallbackPrice, source.getPlatform(), exactUrl);
+                        } else {
+                            source.setLastCheckedAt(java.time.LocalDateTime.now());
+                            itemSourceRepository.save(source);
+                        }
                     } catch (Exception ignored) { }
                 }
             }

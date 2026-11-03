@@ -127,4 +127,23 @@ class FlipkartPriceParserTest {
         ScrapedProduct product = parser.parse(html, "https://www.flipkart.com/jack-jones-solid-men-crew-neck-brown-t-shirt/p/itm384f8687de94d?pid=TSHH9N9GDFTHWYBT");
         assertThat(product.getPrice()).isEqualByComparingTo(new BigDecimal("849"));
     }
+
+    @Test
+    void testWildStoneTmpFile() throws Exception {
+        java.io.File file = new java.io.File("/tmp/flipkart_wildstone.html");
+        if (file.exists()) {
+            String html = java.nio.file.Files.readString(file.toPath());
+            org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(html);
+            org.jsoup.select.Elements els = doc.select("div.v1zwn21n");
+            for (org.jsoup.nodes.Element el : els) {
+                if (el.text().contains("₹")) {
+                    System.out.println("v1zwn21n with ₹: " + el.text());
+                }
+            }
+            ScrapedProduct p = parser.parse(html, "https://www.flipkart.com/wild-stone-edge-perfume-men-eau-de-parfum-100-ml/p/itm2cf522a8c8d74?pid=PERHEPNZU3NNFN5Q");
+            System.out.println("PARSED TITLE: " + p.getTitle());
+            System.out.println("PARSED PRICE: " + p.getPrice());
+            System.out.println("PARSED IN STOCK: " + p.isInStock());
+        }
+    }
 }
